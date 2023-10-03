@@ -68,6 +68,7 @@ jobs:
 
         include:
         - arch: "arm32v5"
+          docker_image: "arm32v5/debian"
           platform: "arm/v5"
           cflags: "-O2 -mthumb -mthumb-interwork -march=armv4t"
           cmake_opts: "-DAVM_DISABLE_SMP=On"
@@ -87,13 +88,21 @@ jobs:
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev
 
         - arch: "arm32v7"
+          docker_image: "arm32v7/debian"
           platform: "arm/v7"
           tag: "bullseye"
           cflags: "-mcpu=cortex-a7 -mfloat-abi=hard -O2 -mthumb -mthumb-interwork"
 
         - arch: "arm64v8"
+          docker_image: "arm64v8/debian"
           platform: "arm64/v8"
           tag: "bullseye"
+          cflags: "-O2"
+
+        - arch: "x86_64"
+          docker_image: "ubuntu"
+          platform: "amd64"
+          tag: "20.04"
           cflags: "-O2"
 
     steps:
@@ -120,7 +129,7 @@ jobs:
       run: |
         docker run --platform linux/${{ matrix.platform }} --rm -v $PWD:/atomvm -w /atomvm \
         -e CFLAGS="${{ matrix.cflags }}" -e CXXFLAGS="${{ matrix.cflags }}" \
-        ${{ matrix.arch }}/debian:${{ matrix.tag }} /bin/bash -c '
+        ${{ matrix.docker_image }}:${{ matrix.tag }} /bin/bash -c '
         ([ -n "${{ matrix.sources }}" ] && echo "${{ matrix.sources }}" > /etc/apt/sources.list || true) &&
         cat /etc/apt/sources.list &&
         if test -n "${{ matrix.install_deps }}"; then
