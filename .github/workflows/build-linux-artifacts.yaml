@@ -232,3 +232,4 @@ jobs:
         fail_on_unmatched_files: true
         files: |
           build/AtomVM*
+          build/AtomVM*.sha256
