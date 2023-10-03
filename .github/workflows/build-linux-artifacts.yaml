@@ -111,7 +111,6 @@ jobs:
       run: |
         docker run --platform linux/${{ matrix.platform }} --rm -v $PWD:/atomvm -w /atomvm \
         -e CFLAGS="${{ matrix.cflags }}" -e CXXFLAGS="${{ matrix.cflags }}" \
-        -e ARCH_NAME="${{ matrix.arch }}" \
         ${{ matrix.arch }}/debian:${{ matrix.tag }} /bin/bash -c '
         ([ -n "${{ matrix.sources }}" ] && echo "${{ matrix.sources }}" > /etc/apt/sources.list || true) &&
         cat /etc/apt/sources.list &&
