@@ -91,6 +91,11 @@ jobs:
           tag: "bullseye"
           cflags: "-mcpu=cortex-a7 -mfloat-abi=hard -O2 -mthumb -mthumb-interwork"
 
+        - arch: "arm64v8"
+          platform: "arm64/v8"
+          tag: "bullseye"
+          cflags: "-O2"
+
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
