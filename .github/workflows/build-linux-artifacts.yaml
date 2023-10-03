@@ -203,7 +203,7 @@ jobs:
         cp ../build_tests/tests/libs/estdlib/*.avm tests/libs/estdlib/  &&
         cp ../build_tests/tests/libs/eavmlib/*.avm tests/libs/eavmlib/ &&
         cp ../build_tests/tests/libs/alisp/*.avm tests/libs/alisp/ &&
-        make AtomVM &&
+        VERBOSE=1 make AtomVM &&
         make test-erlang &&
         make test-enif &&
         make test-mailbox &&
