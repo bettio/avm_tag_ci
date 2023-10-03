@@ -107,21 +107,21 @@ jobs:
           docker_image: "riscv64/ubuntu"
           platform: "riscv64"
           tag: "22.04"
-          cflags: ""
+          cflags: "-O2"
 
         - arch: "x86_64"
           build_name: "linux-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
           tag: "22.04"
-          cflags: ""
+          cflags: "-O2"
 
         - arch: "x86_64"
           build_name: "linux-openssl1-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
           tag: "18.04"
-          cflags: ""
+          cflags: "-O2"
           install_deps: |
             apt update &&
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev wget &&
