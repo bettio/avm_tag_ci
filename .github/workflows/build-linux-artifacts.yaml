@@ -106,18 +106,37 @@ jobs:
           cflags: "-O2"
 
         - arch: "i386"
-          docker_image: "i386/ubuntu"
+          docker_image: "i386/debian"
           platform: "386"
-          tag: "18.04"
-          cflags: "-O2"
+          cflags: ""
+          tag: "stretch"
+          sources: |
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports main
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports-sloppy main
+            deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
+            deb-src [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch main
+            deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main
+          # Workaround from https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=954852
           install_deps: |
             apt update &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev wget &&
-            apt purge -y cmake &&
-            wget https://cmake.org/files/v3.13/cmake-3.13.5-Linux-x86_64.tar.gz &&
-            tar xf cmake-3.13.5-Linux-x86_64.tar.gz &&
-            mv cmake-3.13.5-Linux-x86_64 /opt/cmake-3.13.5 &&
-            ln -sf /opt/cmake-3.13.5/bin/* /usr/bin/
+            apt install -y -t stretch-backports-sloppy libarchive13 &&
+            apt install -y -t stretch-backports cmake &&
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev
+
+#         - arch: "i386"
+#          docker_image: "i386/ubuntu"
+#          platform: "386"
+#          tag: "18.04"
+#          cflags: "-O2"
+#          install_deps: |
+#            apt update &&
+#            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev wget &&
+#            apt purge -y cmake &&
+#            wget https://cmake.org/files/v3.13/cmake-3.13.5-Linux-x86_64.tar.gz &&
+#            tar xf cmake-3.13.5-Linux-x86_64.tar.gz &&
+#            mv cmake-3.13.5-Linux-x86_64 /opt/cmake-3.13.5 &&
+#            ln -sf /opt/cmake-3.13.5/bin/* /usr/bin/
 
     steps:
     - name: Checkout repo
