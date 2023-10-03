@@ -157,7 +157,7 @@ jobs:
         ./src/AtomVM tests/libs/estdlib/test_estdlib.avm &&
         ./src/AtomVM tests/libs/eavmlib/test_eavmlib.avm &&
         ./src/AtomVM tests/libs/alisp/test_alisp.avm &&
-        cp ./src/AtomVM "./AtomVM-$ARCH_NAME"
+        cp ./src/AtomVM ./AtomVM-${{ matrix.arch }}
         '
 
     - name: Release
