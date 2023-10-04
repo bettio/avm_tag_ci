@@ -71,7 +71,7 @@ jobs:
           build_name: "linux-arm32v5"
           docker_image: "arm32v5/debian"
           platform: "arm/v5"
-          cflags: "-O2 -mthumb -mthumb-interwork -march=armv4t"
+          cflags: "-mthumb -mthumb-interwork -march=armv4t"
           cmake_opts: "-DAVM_DISABLE_SMP=On"
           tag: "stretch"
           sources: |
@@ -93,35 +93,35 @@ jobs:
           docker_image: "arm32v7/debian"
           platform: "arm/v7"
           tag: "bullseye"
-          cflags: "-mcpu=cortex-a7 -mfloat-abi=hard -O2 -mthumb -mthumb-interwork"
+          cflags: "-mcpu=cortex-a7 -mfloat-abi=hard -mthumb -mthumb-interwork"
 
         - arch: "arm64v8"
           build_name: "linux-arm64v8"
           docker_image: "arm64v8/debian"
           platform: "arm64/v8"
           tag: "bullseye"
-          cflags: "-O2"
+          cflags: ""
 
         - arch: "riscv64"
           build_name: "linux-riscv64"
           docker_image: "riscv64/ubuntu"
           platform: "riscv64"
           tag: "22.04"
-          cflags: "-O2"
+          cflags: ""
 
         - arch: "x86_64"
           build_name: "linux-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
           tag: "22.04"
-          cflags: "-O2"
+          cflags: ""
 
         - arch: "x86_64"
           build_name: "linux-openssl1-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
           tag: "18.04"
-          cflags: "-O2"
+          cflags: ""
           install_deps: |
             apt update &&
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev wget &&
