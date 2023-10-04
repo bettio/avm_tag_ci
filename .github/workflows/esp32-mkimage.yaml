@@ -126,3 +126,12 @@ jobs:
         name: atomvm-${{ matrix.soc }}-image
         path: ./src/platforms/esp32/build/atomvm-${{ matrix.soc }}-*.img
         if-no-files-found: error
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          src/platforms/esp32/build/atomvm-${{ matrix.soc }}-*.img
