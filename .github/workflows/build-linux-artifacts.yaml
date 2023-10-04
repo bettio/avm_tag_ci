@@ -240,8 +240,8 @@ jobs:
         ./src/AtomVM tests/libs/estdlib/test_estdlib.avm &&
         ./src/AtomVM tests/libs/eavmlib/test_eavmlib.avm &&
         ./src/AtomVM tests/libs/alisp/test_alisp.avm &&
-        cp ./src/AtomVM ./AtomVM-${{ matrix.build_name }} &&
-        sha256sum ./src/AtomVM > ./AtomVM-${{ matrix.build_name }}.sha256
+        cp ./src/AtomVM ./AtomVM-${{ matrix.build_name }}-${{ github.ref_name }} &&
+        sha256sum ./src/AtomVM > ./AtomVM-${{ matrix.build_name }}-${{ github.ref_name }}.sha256
         '
 
     - name: Release
