@@ -86,7 +86,7 @@ jobs:
             apt update &&
             apt install -y -t stretch-backports-sloppy libarchive13 &&
             apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
 
         - arch: "arm32v7"
           build_name: "linux-arm32v7"
