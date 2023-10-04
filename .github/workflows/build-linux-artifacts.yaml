@@ -89,17 +89,37 @@ jobs:
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
 
         - arch: "arm32v7"
-          build_name: "linux-arm32v7"
+          build_name: "linux-openssl1-arm32v7thf"
           docker_image: "arm32v7/debian"
           platform: "arm/v7"
-          tag: "bullseye"
-          cflags: "-mcpu=cortex-a7 -mfloat-abi=hard -mthumb -mthumb-interwork"
+          tag: "stretch"
+          cflags: "-mfloat-abi=hard -mthumb -mthumb-interwork"
+          sources: |
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports main
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports-sloppy main
+            deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
+            deb-src [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
+            deb [trusted=yes] http://archive.debian.org/debian/ stretch main
+            deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main
+          # Workaround from https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=954852
+          install_deps: |
+            apt update &&
+            apt install -y -t stretch-backports-sloppy libarchive13 &&
+            apt install -y -t stretch-backports cmake &&
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
+
+        - arch: "arm32v7"
+          build_name: "linux-arm32v7thf"
+          docker_image: "arm32v7/ubuntu"
+          platform: "arm/v7"
+          tag: "22.04"
+          cflags: "-mfloat-abi=hard -mthumb -mthumb-interwork"
 
         - arch: "arm64v8"
           build_name: "linux-arm64v8"
-          docker_image: "arm64v8/debian"
+          docker_image: "arm64v8/ubuntu"
           platform: "arm64/v8"
-          tag: "bullseye"
+          tag: "22.04"
           cflags: ""
 
         - arch: "riscv64"
@@ -132,7 +152,7 @@ jobs:
             ln -sf /opt/cmake-3.13.5/bin/* /usr/bin/
 
         - arch: "i386"
-          build_name: "linux-i386"
+          build_name: "linux-openssl1-i386"
           docker_image: "i386/debian"
           platform: "386"
           cflags: ""
