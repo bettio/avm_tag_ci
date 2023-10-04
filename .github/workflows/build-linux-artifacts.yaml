@@ -63,6 +63,7 @@ jobs:
 
     strategy:
       fail-fast: false
+      matrix:
         include:
         - arch: "arm32v5"
           build_name: "linux-arm32v5"
