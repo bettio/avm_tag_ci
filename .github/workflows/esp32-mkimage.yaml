@@ -20,6 +20,11 @@ on:
       - '.github/workflows/**'
       - 'src/platforms/esp32/**'
       - 'src/libAtomVM/**'
+    tags:
+      - '*'
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref != 'refs/heads/master' && github.ref || github.run_id }}
