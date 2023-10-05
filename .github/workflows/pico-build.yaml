@@ -62,3 +62,27 @@ jobs:
         nvm use node
         npm install
         npx tsx run-tests.ts ../build/tests/rp2040_tests.uf2 ../build/tests/test_erl_sources/rp2040_test_modules.uf2
+
+    - name: "Rename and write sha256sum"
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      working-directory: src/platforms/rp2040/build
+      run: |
+        ATOMVM_UF2=AtomVM-${{ github.ref_name }}.uf2 &&
+        mv src/AtomVM.uf2 "src/${ATOMVM_UF2}" &&
+        sha256sum "src/${ATOMVM_UF2}" > "src/${ATOMVM_UF2}.sha256" &&
+        ATOMVMLIB_FILE=atomvmlib-${{ github.ref_name }}.uf2 &&
+        mv libs/atomvmlib.uf2 "libs/${ATOMVMLIB_FILE}" &&
+        sha256sum "libs/${ATOMVMLIB_FILE}" > "libs/${ATOMVMLIB_FILE}.sha256"
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          src/platforms/rp2040/build/src/AtomVM.uf2
+          src/platforms/rp2040/build/src/AtomVM.uf2.sha256
+          src/platforms/rp2040/build/libs/atomvmlib-${{ github.ref_name }}.uf2
+          src/platforms/rp2040/build/libs/atomvmlib-${{ github.ref_name }}.uf2.sha256
