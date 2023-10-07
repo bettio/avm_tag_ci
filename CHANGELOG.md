@@ -21,10 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for `atomvm:posix_clock_settime/2`
 - Added support for creations of binaries with unaligned strings
 - Added `-h` and `-v` flags to generic_unix AtomVM command
-- Added support initial for Pico-W with the on-board LED
+- Removed support to ESP32 NVS from network module in order to make it generic. See also [UPDATING.md].
+- Added initial support for Pico-W: on-board LED, connection to wifi network.
 
 ### Changed
-- Changed offset of atomvmlib and of program on Pico. See also UPDATING.md.
+- Changed offset of atomvmlib and of program on Pico. See also [UPDATING.md].
 
 ### Fixed
 
@@ -35,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed race conditions in atoms table.
 - Fixed a bug in the STM32 port that caused the final result to never be returned.
 - Fix bug when building a binary using a 64-bit integer on a 32-bit CPU.
+- Fix (using 'auto' option)  SPI on ESP32 models other than ESP32, such as ESP32S2, ESP32C3, ...
 
 ## [0.6.0-alpha.0] - 2023-08-13
 

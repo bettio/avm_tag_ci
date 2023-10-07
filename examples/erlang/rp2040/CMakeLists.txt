@@ -22,7 +22,8 @@ project(examples_erlang_rp2040)
 
 include(BuildErlang)
 
-pack_uf2(hello_pico hello_pico eavmlib estdlib)
-pack_uf2(pico_blink pico_blink eavmlib estdlib)
-pack_uf2(pico_rtc pico_rtc eavmlib estdlib)
-pack_uf2(picow_blink picow_blink eavmlib estdlib)
+pack_uf2(hello_pico hello_pico)
+pack_uf2(pico_blink pico_blink)
+pack_uf2(pico_rtc pico_rtc)
+pack_uf2(picow_blink picow_blink)
+pack_uf2(picow_wifi_sta picow_wifi_sta)
