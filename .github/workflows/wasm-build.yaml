@@ -199,6 +199,9 @@ jobs:
         ATOMVM_JS=AtomVM-${{ github.ref_name }}.js
         mv AtomVM.js "${ATOMVM_JS}"
         sha256sum "${ATOMVM_JS}" > "${ATOMVM_JS}.sha256"
+        ATOMVM_WORKER_JS=AtomVM.worker-${{ github.ref_name }}.js
+        mv AtomVM.worker.js "${ATOMVM_WORKER_JS}"
+        sha256sum "${ATOMVM_WORKER_JS}" > "${ATOMVM_WORKER_JS}.sha256"
         popd
         pushd build/examples/emscripten/
         SERVER_FILE=wasm_webserver-${{ github.ref_name }}.avm
@@ -214,5 +217,7 @@ jobs:
         files: |
           src/platforms/emscripten/build/src/AtomVM-${{ github.ref_name }}.js
           src/platforms/emscripten/build/src/AtomVM-${{ github.ref_name }}.js.sha256
+          src/platforms/emscripten/build/src/AtomVM.worker-${{ github.ref_name }}.js
+          src/platforms/emscripten/build/src/AtomVM.worker-${{ github.ref_name }}.js.sha256
           build/examples/emscripten/wasm_webserver-${{ github.ref_name }}.avm
           build/examples/emscripten/wasm_webserver-${{ github.ref_name }}.avm.sha256
