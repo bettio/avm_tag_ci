@@ -32,6 +32,10 @@
 #include <pico/time.h>
 #include <sys/time.h>
 
+#ifdef LIB_PICO_CYW43_ARCH
+#include <pico/cyw43_arch.h>
+#endif
+
 #pragma GCC diagnostic pop
 
 // libAtomVM
@@ -41,6 +45,7 @@
 
 #include "rp2040_sys.h"
 
+struct PortDriverDefListItem *port_driver_list;
 struct NifCollectionDefListItem *nif_collection_list;
 
 void sys_init_platform(GlobalContext *glb)
@@ -49,10 +54,18 @@ void sys_init_platform(GlobalContext *glb)
     glb->platform_data = platform;
     mutex_init(&platform->event_poll_mutex);
     cond_init(&platform->event_poll_cond);
+
+#ifdef LIB_PICO_CYW43_ARCH
+    cyw43_arch_init();
+#endif
 }
 
 void sys_free_platform(GlobalContext *glb)
 {
+#ifdef LIB_PICO_CYW43_ARCH
+    cyw43_arch_deinit();
+#endif
+
     struct RP2040PlatformData *platform = glb->platform_data;
     free(platform);
 }
@@ -169,11 +182,13 @@ Module *sys_load_module(GlobalContext *global, const char *module_name)
     return new_module;
 }
 
-Context *sys_create_port(GlobalContext *glb, const char *driver_name, term opts)
+Context *sys_create_port(GlobalContext *glb, const char *port_name, term opts)
 {
-    UNUSED(glb);
-    UNUSED(driver_name);
-    UNUSED(opts);
+    for (struct PortDriverDefListItem *item = port_driver_list; item != NULL; item = item->next) {
+        if (strcmp(port_name, item->def->port_driver_name) == 0) {
+            return item->def->port_driver_create_port_cb(glb, opts);
+        }
+    }
 
     return NULL;
 }
@@ -183,6 +198,24 @@ term sys_get_info(Context *ctx, term key)
     UNUSED(ctx);
     UNUSED(key);
     return UNDEFINED_ATOM;
+}
+
+void port_driver_init_all(GlobalContext *global)
+{
+    for (struct PortDriverDefListItem *item = port_driver_list; item != NULL; item = item->next) {
+        if (item->def->port_driver_init_cb) {
+            item->def->port_driver_init_cb(global);
+        }
+    }
+}
+
+void port_driver_destroy_all(GlobalContext *global)
+{
+    for (struct PortDriverDefListItem *item = port_driver_list; item != NULL; item = item->next) {
+        if (item->def->port_driver_destroy_cb) {
+            item->def->port_driver_destroy_cb(global);
+        }
+    }
 }
 
 void nif_collection_init_all(GlobalContext *global)
