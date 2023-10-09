@@ -306,9 +306,9 @@ or
     rebar3 packbeam -p -i packed.avm module.beam
 
 Then the BEAM file must be converted to UF2.
-The VM currently expects the application to be loaded at address 0x100A0000.
+The VM currently expects the application to be loaded at address 0x10100000.
 
-    ./uf2tool create -o packed.uf2 -s 0x100A0000 packed.avm
+    ./uf2tool create -o packed.uf2 -s 0x10100000 packed.avm
 
 Copy this UF2 to the Pico after you copied the VM (`AtomVM.uf2`) and the
 standard libraries (`atomvmlib.uf2`).
@@ -318,9 +318,33 @@ standard libraries (`atomvmlib.uf2`).
 
 AtomVM may be run on UNIX-like platforms using the `atomvm` command.
 
-You may specify one or more AVM files on the command line when running the `atom` command.  BEAM modules defined in earlier AVM modules on the command line take higher precedence that BEAM modules included in AVM files later in the argument list.
+You may specify one or more AVM files on the command line when running the `atomvm` command.  BEAM modules defined in earlier AVM modules on the command line take higher precedence that BEAM modules included in AVM files later in the argument list.
 
     shell$ atomvm /path/to/myapp.avm
+
+To get the current version of AtomVM, use the `-v` option, e.g.:
+
+    shell$ atomvm -v
+    0.6.1
+
+Use the `-h` option to get command line help:
+
+    shell$ atomvm -h
+
+    Syntax:
+
+        /usr/local/lib/atomvm/AtomVM [-h] [-v] <path-to-avm-file>+
+
+    Options:
+
+        -h         Print this help and exit.
+        -v         Print the AtomVM version and exit.
+
+    Supply one or more AtomVM packbeam (.avm) files to start your application.
+
+    Example:
+
+        $ /usr/local/lib/atomvm/AtomVM /path/to/my/application.avm /path/to/atomvmlib.avm
 
 Currently, the `atomvm` command and libraries must be built and installed from source.
 
@@ -334,25 +358,67 @@ The following resources may be useful for understanding how to develop Erlang or
 * [Programmers Guide](./programmers-guide.md)
 
 
-## Getting Started with AtomVM WebAssembly port.
+## Getting Started with AtomVM WebAssembly port for NodeJS
 
-AtomVM may be run on platforms with NodeJS from the AtomVM.js file (with its companion AtomVM.wasm file).
+AtomVM's WebAssembly port for NodeJS may be run using `node` command and AtomVM.js, AtomVM.worker.js and AtomVM.wasm files.
 
-Currently, these files must be built and installed from source.
+    shell$ node /path/to/AtomVM.js /path/to/myapp.avm
 
-> See the AtomVM [Build Instructions](./build-instructions.md) for instructions about how to build AtomVM WebAssembly port.
+## Getting Started with AtomVM WebAssembly port for browsers
 
-AtomVM may also be run in modern browsers (Safari, Chrome and Chrome-based, Firefox) from the AtomVM.js, AtomVM.worker.js and AtomVM.wasm files.
+AtomVM may also be run in modern browsers (Safari, Chrome and Chrome-based, Firefox) using AtomVM.js, AtomVM.worker.js and AtomVM.wasm files.
 
-Currently, these files must be built and installed from source. They also need to be installed on a web server that send `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers as explained in [Mozilla's documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements).
+Please note that these files are different from the NodeJS ones.
 
-AtomVM comes with a toy web server you can use and run with AtomVM built for Generic Unix with:
+Because AtomVM uses SharedArrayBuffer, to be executed by a browser, these files need to be served:
+- on localhost or over HTTPS
+- by a web server that also sends `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers. These headers are also called COOP and COEP headers.
+
+These security requirements are documented in [Mozilla's documentation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements).
+
+### Trying locally from AtomVM source tree
+
+If you compile AtomVM for Unix as well as for Node as explained in the [build instructions](./build-instructions.md), you can use an AtomVM-based toy webserver to serve the WebAssembly examples with:
 
 ```
 ./src/AtomVM examples/emscripten/wasm_webserver.avm
 ```
 
-This web server serves HTML files from `examples/emscripten/` which you can copy to a webserver along with binaries and built files.
+This web server serves HTML files from `examples/emscripten/`. It works without HTTPS because files are served on localhost.
+
+### Using a hosting service with a `_headers` file
+
+You can also host the three files on a hosting service such as Netlify that uses `_headers` files.
+
+The file could have the following content:
+
+```
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+```
+
+### Using web server such as Nginx
+
+You can also host the three files on web server such as Nginx or Apache.
+
+The configuration for Nginx would be:
+
+```
+server {
+   add_header Cross-Origin-Opener-Policy "same-origin";
+   add_header Cross-Origin-Embedder-Policy "require-corp";
+   location / {
+       ...
+   }
+}
+```
+
+### Using Javascript service worker trick
+
+If you have no possibility to modify the headers, for example with GitHub pages, you can still get AtomVM to run in the browser using a Javascript service worker trick.
+
+We did successfully use [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker).
 
 ## Where to go from here
 
