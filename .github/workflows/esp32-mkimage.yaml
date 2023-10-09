@@ -9,17 +9,15 @@ name: esp32-mkimage
 on:
   push:
     paths:
-      - '.github/workflows/**'
-      - 'CMakeLists.txt'
-      - 'libs/**'
-      - 'src/platforms/esp32/**'
-      - 'src/libAtomVM/**'
-      - 'tools/packbeam/**'
+      - '**'
+    tags:
+      - '*'
   pull_request:
     paths:
-      - '.github/workflows/**'
-      - 'src/platforms/esp32/**'
-      - 'src/libAtomVM/**'
+      - '**'
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref != 'refs/heads/master' && github.ref || github.run_id }}
@@ -32,7 +30,7 @@ jobs:
 
     strategy:
       matrix:
-        idf-version: ["4.4.3"]
+        idf-version: ["5.1.1"]
         cc: ["clang-10"]
         cxx: ["clang++-10"]
         cflags: ["-O3"]
@@ -66,7 +64,8 @@ jobs:
     # needed for generating AtomVM version when running in a docker container
     - name: "Configure Git"
       run: |
-        git config --global --add safe.directory /__w/AtomVM/AtomVM
+        # git config --global --add safe.directory /__w/AtomVM/AtomVM
+        git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
         echo -n "git rev-parse: "
         git rev-parse --short HEAD
 
@@ -103,6 +102,13 @@ jobs:
       run: |
         make
 
+    - name: "Use release defaults"
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      working-directory: ./src/platforms/esp32/
+      run: |
+        cp sdkconfig.release-defaults sdkconfig.defaults
+
     - name: "Build ${{ matrix.soc }} with idf.py"
       shell: bash
       working-directory: ./src/platforms/esp32/
@@ -123,5 +129,24 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: atomvm-${{ matrix.soc }}-image
-        path: ./src/platforms/esp32/build/atomvm-${{ matrix.soc }}-*.img
+        path: ./src/platforms/esp32/build/atomvm-${{ matrix.soc }}.img
         if-no-files-found: error
+
+    - name: "Rename and write sha256sum"
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      working-directory: src/platforms/esp32/build
+      run: |
+        ATOMVM_IMG="AtomVM-${{ matrix.soc }}-${{ github.ref_name }}.img"
+        mv atomvm-${{ matrix.soc }}.img "${ATOMVM_IMG}"
+        sha256sum "${ATOMVM_IMG}" > "${ATOMVM_IMG}.sha256"
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        draft: true
+        fail_on_unmatched_files: true
+        files: |
+          src/platforms/esp32/build/AtomVM-${{ matrix.soc }}-${{ github.ref_name }}.img
+          src/platforms/esp32/build/AtomVM-${{ matrix.soc }}-${{ github.ref_name }}.img.sha256

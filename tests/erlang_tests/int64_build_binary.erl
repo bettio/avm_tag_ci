@@ -1,7 +1,7 @@
 %
 % This file is part of AtomVM.
 %
-% Copyright 2018-2020 Davide Bettio <davide@uninstall.it>
+% Copyright 2023 Davide Bettio <davide@uninstall.it>
 %
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
@@ -18,23 +18,20 @@
 % SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 %
 
--module(pico_blink).
--export([start/0]).
-
-% 25 is on-board led on Pico
-% This code will not work on Pico-W where GPIO 25 has another purpose.
--define(GPIO_NUM, 25).
+-module(int64_build_binary).
+-export([start/0, build/1]).
 
 start() ->
-    gpio:init(?GPIO_NUM),
-    gpio:set_pin_mode(?GPIO_NUM, output),
-    loop(off).
+    Bin = make_map(3940753902, 3186666752, 7),
+    sum_all(binary_to_list(Bin), 1, 0) - 8559.
 
-loop(off) ->
-    gpio:digital_write(?GPIO_NUM, low),
-    timer:sleep(1000),
-    loop(on);
-loop(on) ->
-    gpio:digital_write(?GPIO_NUM, high),
-    timer:sleep(1000),
-    loop(off).
+sum_all([], _N, Acc) ->
+    Acc;
+sum_all([H | T], N, Acc) ->
+    sum_all(T, N + 1, Acc + N * H).
+
+make_map(A, B, C) ->
+    ?MODULE:build(#{a64 => A, b32 => B, c => C, d => 0}).
+
+build(#{a64 := A64, b32 := B32}) ->
+    <<A64:64/little-unsigned, B32:32/little-unsigned, 0:32>>.

@@ -29,6 +29,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
     gpiodriver.c
+    networkdriver.c
     platform_defaultatoms.c
     platform_nifs.c
     smp.c
@@ -64,4 +65,19 @@ if (NOT AVM_USE_32BIT_FLOAT)
     target_link_libraries(libAtomVM${PLATFORM_LIB_SUFFIX} PUBLIC pico_double)
 endif()
 
-target_link_options(libAtomVM${PLATFORM_LIB_SUFFIX} PUBLIC -Wl,-u -Wl,gpio_nif)
+if (PICO_CYW43_SUPPORTED)
+    set(BTSTACK_ROOT ${PICO_SDK_PATH}/lib/btstack)
+    set(BTSTACK_3RD_PARTY_PATH ${BTSTACK_ROOT}/3rd-party)
+
+    add_library(pan_lwip_dhserver INTERFACE)
+    target_sources(pan_lwip_dhserver INTERFACE
+        ${BTSTACK_3RD_PARTY_PATH}/lwip/dhcp-server/dhserver.c
+    )
+    target_include_directories(pan_lwip_dhserver INTERFACE
+        ${BTSTACK_3RD_PARTY_PATH}/lwip/dhcp-server
+    )
+    target_link_libraries(libAtomVM${PLATFORM_LIB_SUFFIX} PUBLIC pico_cyw43_arch_lwip_threadsafe_background pico_lwip_sntp INTERFACE pan_lwip_dhserver)
+    target_link_options(libAtomVM${PLATFORM_LIB_SUFFIX} PUBLIC "SHELL:-Wl,-u -Wl,networkregister_port_driver")
+endif()
+
+target_link_options(libAtomVM${PLATFORM_LIB_SUFFIX} PUBLIC "SHELL:-Wl,-u -Wl,gpio_nif")
