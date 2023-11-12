@@ -58,6 +58,7 @@ The following software is required in order to build AtomVM in generic UNIX syst
 * `make`
 * `gperf`
 * `zlib`
+* `Mbed TLS`
 * Erlang/OTP compiler (`erlc`)
 * Elixir compiler
 
@@ -311,7 +312,7 @@ The `<atomvm-source-tree-root>/tools/release/esp32` directory contains the `mkim
 
 Running this script will generate a single `atomvm-<sha>.img` file in the `build` directory of the esp32 source tree, where `<sha>` is the git hash of the current checkout.  This image contains the ESP32 bootloader, AtomVM executable, and the `eavmlib` and `estdlib` Erlang libraries in one file, which can then be flashed to address `0x1000`.
 
-The `mkimage.sh` script is run from the src/platform/esp32 directory as follows:
+The `mkimage.sh` script is run from the `src/platform/esp32` directory as follows:
 
     shell$ ./build/mkimage.sh
     Writing output to /home/frege/AtomVM/src/platforms/esp32/build/atomvm-esp32-0.6.0-dev+git.602e6bc.img
@@ -423,7 +424,7 @@ If you are doing development work on the core Erlang/Elixir libraries and wish t
     Flash will be erased from 0x001d0000 to 0x001ecfff...
     Wrote 131072 bytes at 0x001d0000 in 1.8 seconds (582.1 kbit/s)...
     Hash of data verified.
-    
+
     Leaving...
     Hard resetting via RTS pin...
 
@@ -495,11 +496,19 @@ Example:
 
 ### Prerequisites
 
-* `arm-none-eabi`/`arm-elf` toolchain compatible with your system
+The following software is required to build AtomVM for the STM32 platform:
+
+| Package |
+|---------|
+| [11.3 ARM toolchain](https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-arm-none-eabi.tar.xz) (or compatible with your system) |
+| [libopencm3](https://github.com/libopencm3/libopencm3.git) version 0.8.0 |
 * `cmake`
 * `make`
 * `git`
-* [`libopencm3`](https://github.com/libopencm3/libopencm3)
+
+> Note.  AtomVM tests this build on the latest Ubuntu github runner.
+
+
 
 ### Setup libopencm3
 
@@ -550,6 +559,9 @@ using a TTL-USB with the TX pin connected to board's pin PA2 (USART2 RX). Baudra
 is 8N1 with no flow control.
 
 > If building for a different target USART and gpio pins may need to be adjusted in `main.c`.
+
+### Configuring for "deployment"
+After your application has been tested (_and debugged_) and is ready to put into active use you may want to tune the build of AtomVM.  For instance disabling logging with `-DAVM_LOG_DISABLE=on` as a `cmake` configuration option may result in slightly better performance. This will have no affect on the console output of your application, just disable low level log messages from the AtomVM system. You may also want to enabling automatic reboot in the case that your application ever exits with a return other than `ok`. This can be enabled with the `cmake` option `-DAVM_CONFIG_REBOOT_ON_NOT_OK=on`.
 
 ## Building for Raspberry Pi Pico
 

@@ -48,19 +48,19 @@ struct Test
 // Favor modules that return 0
 #define TEST_CASE(module)        \
     {                            \
-#module, 0, false, false \
+        #module, 0, false, false \
     }
 #define TEST_CASE_EXPECTED(module, expected) \
     {                                        \
-#module, expected, false, false      \
+        #module, expected, false, false      \
     }
 #define TEST_CASE_ATOMVM_ONLY(module, expected) \
     {                                           \
-#module, expected, false, true          \
+        #module, expected, false, true          \
     }
 #define TEST_CASE_COND(module, expected, skip) \
     {                                          \
-#module, expected, skip, false         \
+        #module, expected, skip, false         \
     }
 
 #ifndef AVM_NO_SMP
@@ -107,6 +107,7 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(guards3, 405),
     TEST_CASE_EXPECTED(guards4, 16),
     TEST_CASE_EXPECTED(guards5, 3),
+    TEST_CASE(test_guards_do_not_raise),
     TEST_CASE_EXPECTED(prime, 1999),
     TEST_CASE_COND(prime_smp, 0, SKIP_SMP),
     TEST_CASE_EXPECTED(match, 5),
@@ -154,6 +155,7 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(test_tl, 5),
     TEST_CASE_EXPECTED(test_list_to_atom, 9),
     TEST_CASE_EXPECTED(test_list_to_existing_atom, 9),
+    TEST_CASE(test_lists_reverse),
     TEST_CASE_EXPECTED(test_binary_to_atom, 9),
     TEST_CASE_EXPECTED(test_binary_to_existing_atom, 9),
     TEST_CASE_EXPECTED(test_atom_to_list, 1),
@@ -509,11 +511,8 @@ struct Test tests[] = {
     TEST_CASE_COND(test_stacktrace, 0, SKIP_STACKTRACES),
     TEST_CASE(small_big_ext),
     TEST_CASE(test_crypto),
-
     TEST_CASE(test_min_max_guard),
-
     TEST_CASE(int64_build_binary),
-
     // TEST CRASHES HERE: TEST_CASE(memlimit),
 
     { NULL, 0, false, false }

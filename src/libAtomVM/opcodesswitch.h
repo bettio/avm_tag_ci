@@ -41,12 +41,10 @@
     #include "stacktrace.h"
 #endif
 
-#define ENABLE_OTP21
-#define ENABLE_OTP22
-#define ENABLE_OTP23
-#define ENABLE_OTP24
-#define ENABLE_OTP25
-#define ENABLE_OTP26
+// These constants can be used to reduce the size of the VM for a specific
+// range of compiler versions
+#define MINIMUM_OTP_COMPILER_VERSION 21
+#define MAXIMUM_OTP_COMPILER_VERSION 26
 
 //#define ENABLE_TRACE
 
@@ -121,6 +119,9 @@ typedef dreg_t dreg_gc_safe_t;
 
 #endif
 
+// This macro does not decode all cases but cases we actually observe in opcodes
+// below. More specific decoding is performed when we know the type of the
+// argument
 #define DECODE_COMPACT_TERM(dest_term, decode_pc)                                       \
 {                                                                                       \
     uint8_t first_byte = *(decode_pc)++;                                                \
@@ -173,11 +174,6 @@ typedef dreg_t dreg_gc_safe_t;
                     }                                                                   \
                     break;                                                              \
                 }                                                                       \
-                case COMPACT_EXTENDED_ALLOCATION_LIST: {                                \
-                    uint8_t len = (*(decode_pc)++) >> 4;                                \
-                    (decode_pc) += (--len * 2);                                         \
-                    break;                                                              \
-                }                                                                       \
                 case COMPACT_EXTENDED_TYPED_REGISTER: {                                 \
                     uint8_t reg_byte = *(decode_pc)++;                                  \
                     if (((reg_byte & 0x0F) != COMPACT_XREG)                             \
@@ -202,12 +198,17 @@ typedef dreg_t dreg_gc_safe_t;
                 case COMPACT_11BITS_VALUE:                                              \
                     (decode_pc)++;                                                      \
                     break;                                                              \
-                                                                                        \
-                case COMPACT_NBITS_VALUE:                                               \
-                    /* TODO: when first_byte >> 5 is 7, a different encoding is used */ \
-                    (decode_pc) += (first_byte >> 5) + 2;                               \
+                case COMPACT_NBITS_VALUE:{                                              \
+                    int sz = (first_byte >> 5) + 2;                                     \
+                    if (UNLIKELY(sz > 8)) {                                             \
+                        /* TODO: when first_byte >> 5 is 7, a different encoding is used */ \
+                        fprintf(stderr, "Unexpected nbits vaue @ %" PRIuPTR "\n", (uintptr_t) ((decode_pc) - 1)); \
+                        AVM_ABORT();                                                    \
+                        break;                                                          \
+                    }                                                                   \
+                    (decode_pc) += sz;                                                  \
                     break;                                                              \
-                                                                                        \
+                }                                                                       \
                 default:                                                                \
                     assert((first_byte & 0x30) != COMPACT_LARGE_INTEGER);               \
                     break;                                                              \
@@ -244,7 +245,7 @@ typedef dreg_t dreg_gc_safe_t;
         case COMPACT_XREG:                                                                          \
         case COMPACT_YREG:                                                                          \
             (dreg).index = first_byte >> 4;                                                         \
--            break;                                                                                 \
+             break;                                                                                 \
         case COMPACT_LARGE_YREG:                                                                    \
             (dreg).index = (((first_byte & 0xE0) << 3) | *(decode_pc)++);                           \
             break;                                                                                  \
@@ -1594,9 +1595,6 @@ schedule_in:
 
         switch (*pc++) {
             case OP_LABEL: {
-                #ifdef IMPL_CODE_LOADER
-                    const uint8_t* saved_pc = pc - 1;
-                #endif
                 uint32_t label;
                 DECODE_LITERAL(label, pc)
 
@@ -1604,8 +1602,8 @@ schedule_in:
                 USED_BY_TRACE(label);
 
                 #ifdef IMPL_CODE_LOADER
-                    TRACE("Mark label %i here at %" PRIuPTR "\n", label, saved_pc - code);
-                    module_add_label(mod, label, saved_pc);
+                    TRACE("Mark label %i here at %" PRIuPTR "\n", label, pc - code);
+                    module_add_label(mod, label, pc);
                 #endif
                 break;
             }
@@ -1920,7 +1918,6 @@ schedule_in:
                 break;
             }
 
-            //TODO: implement me
             case OP_BIF1: {
                 uint32_t fail_label;
                 DECODE_LABEL(fail_label, pc);
@@ -1945,7 +1942,12 @@ schedule_in:
                     DEBUG_FAIL_NULL(func);
                     term ret = func(ctx, arg1);
                     if (UNLIKELY(term_is_invalid_term(ret))) {
-                        HANDLE_ERROR();
+                        if (fail_label) {
+                            pc = mod->labels[fail_label];
+                            break;
+                        } else {
+                            HANDLE_ERROR();
+                        }
                     }
 
                     WRITE_REGISTER(dreg, ret);
@@ -1953,7 +1955,6 @@ schedule_in:
                 break;
             }
 
-            //TODO: implement me
             case OP_BIF2: {
                 uint32_t fail_label;
                 DECODE_LABEL(fail_label, pc);
@@ -1981,7 +1982,12 @@ schedule_in:
                     DEBUG_FAIL_NULL(func);
                     term ret = func(ctx, arg1, arg2);
                     if (UNLIKELY(term_is_invalid_term(ret))) {
-                        HANDLE_ERROR();
+                        if (fail_label) {
+                            pc = mod->labels[fail_label];
+                            break;
+                        } else {
+                            HANDLE_ERROR();
+                        }
                     }
 
                     WRITE_REGISTER(dreg, ret);
@@ -2086,6 +2092,7 @@ schedule_in:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 23
             case OP_ALLOCATE_HEAP_ZERO: {
                 uint32_t stack_need;
                 DECODE_LITERAL(stack_need, pc);
@@ -2121,6 +2128,7 @@ schedule_in:
                 #endif
                 break;
             }
+#endif
 
             case OP_TEST_HEAP: {
                 uint32_t heap_need;
@@ -3032,11 +3040,10 @@ wait_timeout_trap_handler:
                 #ifdef IMPL_EXECUTE_LOOP
                     TRACE("get_list/3 %lx, %c%i, %c%i\n", src_value, T_DEST_REG(head_dreg), T_DEST_REG(tail_dreg));
 
-                    term head = term_get_list_head(src_value);
-                    term tail = term_get_list_tail(src_value);
+                    term *list_ptr = term_get_list_ptr(src_value);
 
-                    WRITE_REGISTER(head_dreg, head);
-                    WRITE_REGISTER(tail_dreg, tail);
+                    WRITE_REGISTER(head_dreg, list_ptr[LIST_HEAD_INDEX]);
+                    WRITE_REGISTER(tail_dreg, list_ptr[LIST_TAIL_INDEX]);
                 #endif
 
                 #ifdef IMPL_CODE_LOADER
@@ -3072,6 +3079,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 25
             case OP_SET_TUPLE_ELEMENT: {
                 term new_element;
                 DECODE_COMPACT_TERM(new_element, pc);
@@ -3097,6 +3105,7 @@ wait_timeout_trap_handler:
 #endif
                 break;
             }
+#endif
 
             case OP_PUT_LIST: {
 
@@ -3126,6 +3135,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 21
             case OP_PUT_TUPLE: {
                 uint32_t size;
                 DECODE_LITERAL(size, pc);
@@ -3163,6 +3173,7 @@ wait_timeout_trap_handler:
                 }
                 break;
             }
+#endif
 
             case OP_BADMATCH: {
                 #ifdef IMPL_EXECUTE_LOOP
@@ -3572,6 +3583,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 24
             case OP_BS_INIT2: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -3719,6 +3731,7 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
             case OP_BS_GET_UTF8: {
                 uint32_t fail;
@@ -3795,7 +3808,8 @@ wait_timeout_trap_handler:
                 break;
             }
 
-           case OP_BS_UTF16_SIZE: {
+#if MINIMUM_OTP_COMPILER_VERSION <= 24
+            case OP_BS_UTF16_SIZE: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
                 term src;
@@ -3854,6 +3868,7 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
             case OP_BS_GET_UTF16: {
                 uint32_t fail;
@@ -3930,6 +3945,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 24
             case OP_BS_PUT_UTF32: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -3965,6 +3981,7 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
             case OP_BS_GET_UTF32: {
                 uint32_t fail;
@@ -4056,6 +4073,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 24
             case OP_BS_APPEND: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -4289,7 +4307,7 @@ wait_timeout_trap_handler:
 
                     size_t remaining = 0;
                     const uint8_t *str = module_get_str(mod, offset, &remaining);
-                    if (UNLIKELY(IS_NULL_PTR(str))) {
+                    if (IS_NULL_PTR(str)) {
                         TRACE("bs_put_string: Bad offset in strings table.\n");
                         RAISE_ERROR(BADARG_ATOM);
                     }
@@ -4301,7 +4319,9 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 21
             case OP_BS_START_MATCH2: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -4345,7 +4365,9 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
+#if MAXIMUM_OTP_COMPILER_VERSION >= 22
             case OP_BS_START_MATCH3: {
                 // MEMORY_CAN_SHRINK because bs_start_match is classified as gc in beam_ssa_codegen.erl
                 #ifdef IMPL_EXECUTE_LOOP
@@ -4477,7 +4499,9 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 25
             case OP_BS_MATCH_STRING: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -4513,7 +4537,7 @@ wait_timeout_trap_handler:
 
                     size_t remaining = 0;
                     const uint8_t *str = module_get_str(mod, offset, &remaining);
-                    if (UNLIKELY(IS_NULL_PTR(str))) {
+                    if (IS_NULL_PTR(str)) {
                         TRACE("bs_match_string: Bad offset in strings table.\n");
                         RAISE_ERROR(BADARG_ATOM);
                     }
@@ -4526,7 +4550,9 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 21
             case OP_BS_SAVE2: {
                 term src;
                 DECODE_COMPACT_TERM(src, pc);
@@ -4583,6 +4609,7 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
             case OP_BS_SKIP_BITS2: {
                 uint32_t fail;
@@ -4625,6 +4652,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 24
             case OP_BS_TEST_UNIT: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc)
@@ -4678,6 +4706,7 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
+#endif
 
             case OP_BS_GET_INTEGER2: {
                 uint32_t fail;
@@ -5026,8 +5055,8 @@ wait_timeout_trap_handler:
             }
 
             case OP_GC_BIF1: {
-                uint32_t f_label;
-                DECODE_LABEL(f_label, pc);
+                uint32_t fail_label;
+                DECODE_LABEL(fail_label, pc);
                 uint32_t live;
                 DECODE_LITERAL(live, pc);
                 uint32_t bif;
@@ -5040,7 +5069,12 @@ wait_timeout_trap_handler:
                     GCBifImpl1 func = EXPORTED_FUNCTION_TO_GCBIF(exported_bif)->gcbif1_ptr;
                     term ret = func(ctx, live, arg1);
                     if (UNLIKELY(term_is_invalid_term(ret))) {
-                        HANDLE_ERROR();
+                        if (fail_label) {
+                            pc = mod->labels[fail_label];
+                            break;
+                        } else {
+                            HANDLE_ERROR();
+                        }
                     }
                 #endif
 
@@ -5048,27 +5082,25 @@ wait_timeout_trap_handler:
                 DECODE_DEST_REGISTER(dreg, pc);
 
                 #ifdef IMPL_EXECUTE_LOOP
-                    TRACE("gc_bif1/5 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, dest=%c%i\n", f_label, live, bif, arg1, T_DEST_REG(dreg));
+                    TRACE("gc_bif1/5 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, dest=%c%i\n", fail_label, live, bif, arg1, T_DEST_REG(dreg));
                     WRITE_REGISTER(dreg, ret);
                 #endif
 
                 #ifdef IMPL_CODE_LOADER
                     TRACE("gc_bif1/5\n");
 
-                    UNUSED(f_label)
+                    UNUSED(fail_label)
                     UNUSED(live)
                     UNUSED(bif)
                     UNUSED(arg1)
                     UNUSED(dreg)
                 #endif
-
-                UNUSED(f_label)
                 break;
             }
 
             case OP_GC_BIF2: {
-                uint32_t f_label;
-                DECODE_LABEL(f_label, pc);
+                uint32_t fail_label;
+                DECODE_LABEL(fail_label, pc);
                 uint32_t live;
                 DECODE_LITERAL(live, pc);
                 uint32_t bif;
@@ -5083,7 +5115,12 @@ wait_timeout_trap_handler:
                     GCBifImpl2 func = EXPORTED_FUNCTION_TO_GCBIF(exported_bif)->gcbif2_ptr;
                     term ret = func(ctx, live, arg1, arg2);
                     if (UNLIKELY(term_is_invalid_term(ret))) {
-                        HANDLE_ERROR();
+                        if (fail_label) {
+                            pc = mod->labels[fail_label];
+                            break;
+                        } else {
+                            HANDLE_ERROR();
+                        }
                     }
                 #endif
 
@@ -5091,22 +5128,20 @@ wait_timeout_trap_handler:
                 DECODE_DEST_REGISTER(dreg, pc);
 
                 #ifdef IMPL_EXECUTE_LOOP
-                    TRACE("gc_bif2/6 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, arg2=0x%lx, dest=%c%i\n", f_label, live, bif, arg1, arg2, T_DEST_REG(dreg));
+                    TRACE("gc_bif2/6 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, arg2=0x%lx, dest=%c%i\n", fail_label, live, bif, arg1, arg2, T_DEST_REG(dreg));
                     WRITE_REGISTER(dreg, ret);
                 #endif
 
                 #ifdef IMPL_CODE_LOADER
                     TRACE("gc_bif2/6\n");
 
-                    UNUSED(f_label)
+                    UNUSED(fail_label)
                     UNUSED(live)
                     UNUSED(bif)
                     UNUSED(arg1)
                     UNUSED(arg2)
                     UNUSED(dreg)
                 #endif
-
-                UNUSED(f_label)
                 break;
             }
 
@@ -5131,9 +5166,11 @@ wait_timeout_trap_handler:
                 break;
             }
 
+            // TODO: This opcode is currently uncovered by tests.
+            // We need to implement GC bifs with arity 3, e.g. binary_part/3.
             case OP_GC_BIF3: {
-                uint32_t f_label;
-                DECODE_LABEL(f_label, pc);
+                uint32_t fail_label;
+                DECODE_LABEL(fail_label, pc);
                 uint32_t live;
                 DECODE_LITERAL(live, pc);
                 uint32_t bif;
@@ -5150,7 +5187,12 @@ wait_timeout_trap_handler:
                     GCBifImpl3 func = EXPORTED_FUNCTION_TO_GCBIF(exported_bif)->gcbif3_ptr;
                     term ret = func(ctx, live, arg1, arg2, arg3);
                     if (UNLIKELY(term_is_invalid_term(ret))) {
-                        HANDLE_ERROR();
+                        if (fail_label) {
+                            pc = mod->labels[fail_label];
+                            break;
+                        } else {
+                            HANDLE_ERROR();
+                        }
                     }
                 #endif
 
@@ -5158,14 +5200,14 @@ wait_timeout_trap_handler:
                 DECODE_DEST_REGISTER(dreg, pc);
 
                 #ifdef IMPL_EXECUTE_LOOP
-                    TRACE("gc_bif3/7 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, arg2=0x%lx, arg3=0x%lx, dest=%c%i\n", f_label, live, bif, arg1, arg2, arg3, T_DEST_REG(dreg));
+                    TRACE("gc_bif3/7 fail_lbl=%i, live=%i, bif=%i, arg1=0x%lx, arg2=0x%lx, arg3=0x%lx, dest=%c%i\n", fail_label, live, bif, arg1, arg2, arg3, T_DEST_REG(dreg));
                     WRITE_REGISTER(dreg, ret);
                 #endif
 
                 #ifdef IMPL_CODE_LOADER
                     TRACE("gc_bif2/6\n");
 
-                    UNUSED(f_label)
+                    UNUSED(fail_label)
                     UNUSED(live)
                     UNUSED(bif)
                     UNUSED(arg1)
@@ -5173,8 +5215,6 @@ wait_timeout_trap_handler:
                     UNUSED(arg3)
                     UNUSED(dreg)
                 #endif
-
-                UNUSED(f_label)
                 break;
             }
 
@@ -5198,6 +5238,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 23
             //TODO: stub, implement recv_mark/1
             //it looks like it can be safely left unimplemented
             case OP_RECV_MARK: {
@@ -5219,6 +5260,7 @@ wait_timeout_trap_handler:
                 USED_BY_TRACE(label);
                 break;
             }
+#endif
 
             case OP_LINE: {
                 #ifdef IMPL_CODE_LOADER
@@ -5559,6 +5601,7 @@ wait_timeout_trap_handler:
                 break;
             }
 
+#if MINIMUM_OTP_COMPILER_VERSION <= 23
             case OP_FCLEARERROR: {
                 // This can be a noop as we raise from bifs
                 TRACE("fclearerror/0\n");
@@ -5571,6 +5614,7 @@ wait_timeout_trap_handler:
                 DECODE_LABEL(fail_label, pc);
                 break;
             }
+#endif
 
             case OP_FMOVE: {
                 if (IS_EXTENDED_FP_REGISTER(pc)) {
@@ -5648,11 +5692,21 @@ wait_timeout_trap_handler:
                     ctx->fr[freg3] = ctx->fr[freg1] + ctx->fr[freg2];
                     #ifdef HAVE_PRAGMA_STDC_FENV_ACCESS
                         if (fetestexcept(FE_OVERFLOW)) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                // Not sure this can happen, float operations
+                                // in guards are translated to gc_bif calls
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #else
                         if (!isfinite(ctx->fr[freg3])) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #endif
                 #endif
@@ -5685,11 +5739,21 @@ wait_timeout_trap_handler:
                     ctx->fr[freg3] = ctx->fr[freg1] - ctx->fr[freg2];
                     #ifdef HAVE_PRAGMA_STDC_FENV_ACCESS
                         if (fetestexcept(FE_OVERFLOW)) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                // Not sure this can happen, float operations
+                                // in guards are translated to gc_bif calls
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #else
                         if (!isfinite(ctx->fr[freg3])) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #endif
                 #endif
@@ -5722,11 +5786,21 @@ wait_timeout_trap_handler:
                     ctx->fr[freg3] = ctx->fr[freg1] * ctx->fr[freg2];
                     #ifdef HAVE_PRAGMA_STDC_FENV_ACCESS
                         if (fetestexcept(FE_OVERFLOW)) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                // Not sure this can happen, float operations
+                                // in guards are translated to gc_bif calls
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #else
                         if (!isfinite(ctx->fr[freg3])) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #endif
                 #endif
@@ -5759,11 +5833,21 @@ wait_timeout_trap_handler:
                     ctx->fr[freg3] = ctx->fr[freg1] / ctx->fr[freg2];
                     #ifdef HAVE_PRAGMA_STDC_FENV_ACCESS
                         if (fetestexcept(FE_OVERFLOW | FE_DIVBYZERO)) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                // Not sure this can happen, float operations
+                                // in guards are translated to gc_bif calls
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #else
                         if (!isfinite(ctx->fr[freg3])) {
-                            RAISE_ERROR(BADARITH_ATOM);
+                            if (fail_label) {
+                                pc = mod->labels[fail_label];
+                            } else {
+                                RAISE_ERROR(BADARITH_ATOM);
+                            }
                         }
                     #endif
                 #endif
@@ -5809,7 +5893,6 @@ wait_timeout_trap_handler:
                 break;
             }
 
-#ifdef ENABLE_OTP21
             case OP_GET_HD: {
                 term src_value;
                 DECODE_COMPACT_TERM(src_value, pc)
@@ -5851,9 +5934,8 @@ wait_timeout_trap_handler:
                 #endif
                 break;
             }
-#endif
 
-#ifdef ENABLE_OTP22
+#if MAXIMUM_OTP_COMPILER_VERSION >= 22
             case OP_PUT_TUPLE2: {
                 dreg_gc_safe_t dreg;
                 DECODE_DEST_REGISTER_GC_SAFE(dreg, pc);
@@ -5892,7 +5974,7 @@ wait_timeout_trap_handler:
             }
 #endif
 
-#ifdef ENABLE_OTP23
+#if MAXIMUM_OTP_COMPILER_VERSION >= 23
             case OP_SWAP: {
                 dreg_t reg_a;
                 DECODE_DEST_REGISTER(reg_a, pc);
@@ -5939,7 +6021,11 @@ wait_timeout_trap_handler:
 
                     if (!(term_is_binary(src) || term_is_match_state(src))) {
                         WRITE_REGISTER(dreg, src);
-                        pc = mod->labels[fail];
+                        if (term_is_integer(fail)) {
+                            pc = mod->labels[term_to_int(fail)];
+                        } else {
+                            RAISE_ERROR(BADARG_ATOM);
+                        }
                     } else {
                         term match_state = term_alloc_bin_match_state(src, 0, &ctx->heap);
 
@@ -5950,7 +6036,7 @@ wait_timeout_trap_handler:
             }
 #endif
 
-#ifdef ENABLE_OTP24
+#if MAXIMUM_OTP_COMPILER_VERSION >= 24
             case OP_MAKE_FUN3: {
                 uint32_t fun_index;
                 DECODE_LITERAL(fun_index, pc);
@@ -6034,7 +6120,7 @@ wait_timeout_trap_handler:
             }
 #endif
 
-#ifdef ENABLE_OTP25
+#if MAXIMUM_OTP_COMPILER_VERSION >= 25
             case OP_BS_CREATE_BIN: {
                 uint32_t fail;
                 DECODE_LABEL(fail, pc);
@@ -6352,7 +6438,7 @@ wait_timeout_trap_handler:
             }
 #endif
 
-#ifdef ENABLE_OTP26
+#if MAXIMUM_OTP_COMPILER_VERSION >= 26
             case OP_UPDATE_RECORD: {
                 #ifdef IMPL_CODE_LOADER
                     TRACE("update_record/5\n");

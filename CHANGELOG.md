@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-alpha.2] - Unreleased
+
+### Fixed
+
+- Fixed a bug where guards would raise exceptions instead of just being false
+- Fixed support for big endian CPUs (such as some MIPS CPUs).
+- Fixed STM32 not aborting when `AVM_ABORT()` is used
+- Fixed a bug that would leave the STM32 trapped in a loop on hard faults, rather than aborting
+- Fixed a bug that would make the VM to loop and failing to process selected fds on Linux
+
+### Changed
+
+- Crypto functions on generic_unix platform now rely on MbedTLS instead of OpenSSL
+
+### Added
+
+- Added support for the OTP `socket` interface.
+- Enhancd performance of STM32 by enabling flash cache and i-cache with branch prediction.
+- Added cmake configuration option `AVM_CONFIG_REBOOT_ON_NOT_OK` for STM32
+- New gpio driver for STM32 with nif and port support for read and write functions.
+- Added support for interrupts to STM32 GPIO port driver.
+- Added suppoprt for PicoW extra gpio pins (led) to the gpio driver.
+- Added support for `net:getaddrinfo/1,2`
+- Added minimal support for the OTP `ssl` interface.
+- Added support for `crypto:one_time/4,5` on Unix and Pico as well as for `crypto:hash/2` on Pico
+
 ## [0.6.0-alpha.1] - 2023-10-09
 
 ### Added
@@ -21,12 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for `atomvm:posix_clock_settime/2`
 - Added support for creations of binaries with unaligned strings
 - Added `-h` and `-v` flags to generic_unix AtomVM command
-- Removed support to ESP32 NVS from network module in order to make it generic. See also [UPDATING.md].
+- Removed support to ESP32 NVS from network module in order to make it generic. See also [UPDATING](UPDATING.md).
 - Added initial support for Pico-W: on-board LED, Wifi (STA and AP modes).
 
 ### Changed
 
-- Changed offset of atomvmlib and of program on Pico. See also [UPDATING.md].
+- Changed offset of atomvmlib and of program on Pico. See also [UPDATING](UPDATING.md).
 
 ### Fixed
 

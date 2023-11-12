@@ -33,11 +33,15 @@ set(ERLANG_MODULES
     test_lists
     test_logger
     test_maps
+    test_net
     test_spawn
+    test_ssl
     test_string
     test_proplists
     test_timer
     test_supervisor
+    test_tcp_socket
+    test_udp_socket
     notify_init_server
     ping_pong_server
 )

@@ -25,6 +25,11 @@ set(AVM_SYS_COMPONENT_SRCS
     "sys.c"
     "platform_nifs.c"
     "platform_defaultatoms.c"
+    "../../../../libAtomVM/inet.c"
+    "../../../../libAtomVM/otp_crypto.c"
+    "../../../../libAtomVM/otp_net.c"
+    "../../../../libAtomVM/otp_socket.c"
+    "../../../../libAtomVM/otp_ssl.c"
 )
 
 if (IDF_VERSION_MAJOR GREATER_EQUAL 5)
@@ -59,9 +64,8 @@ list(TRANSFORM soc_include_dirs PREPEND ${soc_dir}/)
 list(TRANSFORM newlib_include_dirs PREPEND ${newlib_dir}/)
 list(TRANSFORM pthread_include_dirs PREPEND ${pthread_dir}/)
 
-set(CMAKE_REQUIRED_INCLUDES ${soc_target_include_dir} ${soc_include_dirs} ${newlib_include_dirs} ${pthread_include_dirs} ${CMAKE_BINARY_DIR}/config/)
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${soc_target_include_dir} ${soc_include_dirs} ${newlib_include_dirs} ${pthread_include_dirs} ${CMAKE_BINARY_DIR}/config/)
 
-include(CheckIncludeFile)
 include(CheckSymbolExists)
 include(CheckCSourceCompiles)
 

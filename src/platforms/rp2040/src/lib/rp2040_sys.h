@@ -23,7 +23,14 @@
 
 #include <time.h>
 
+// Pico SDK
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #include <pico/cond.h>
+#include <pico/util/queue.h>
+
+#pragma GCC diagnostic pop
 
 #include "sys.h"
 
@@ -52,7 +59,7 @@
     struct NifCollectionDef NAME##_nif_collection_def = {                   \
         .nif_collection_init_cb = INIT_CB,                                  \
         .nif_collection_destroy_cb = DESTROY_CB,                            \
-        .nif_collection_resove_nif_cb = RESOLVE_NIF_CB                      \
+        .nif_collection_resolve_nif_cb = RESOLVE_NIF_CB                     \
     };                                                                      \
                                                                             \
     struct NifCollectionDefListItem NAME##_nif_collection_def_list_item = { \
@@ -65,10 +72,46 @@
         nif_collection_list = &NAME##_nif_collection_def_list_item;         \
     }
 
+#define EVENT_QUEUE_LEN 16
+
+typedef queue_t *listener_event_t;
+
+struct EventListener
+{
+    struct ListHead listeners_list_head;
+    event_handler_t handler;
+    listener_event_t queue;
+};
+
+/**
+ * @brief Post an event from ISR to trigger a listener call from task context.
+ * @param global            the global context
+ * @param listener_queue    the listener's queue (EventListener->queue)
+ * @param event             the event to enqueue (copied)
+ * @returns true if successful, false if either queue is full
+ * @details This function should be called from ISR callbacks to postpone
+ * processing in task context (from sys_poll_events). If the system is overloaded
+ * with events, it prints a message to stderr and returns false.
+ * @end
+ */
+bool sys_try_post_listener_event_from_isr(GlobalContext *global, listener_event_t listener_queue, const void *event);
+
+/**
+ * @brief Unregister a listener using its queue.
+ * @param global            the global context
+ * @param listener_queue    the listener's queue (EventListener->queue)
+ * @details We can avoid storing the listeners in platform data.
+ * @end
+ */
+void sys_unregister_listener_from_event(GlobalContext *global, listener_event_t listener_queue);
+
 struct RP2040PlatformData
 {
+#ifndef AVM_NO_SMP
     mutex_t event_poll_mutex;
     cond_t event_poll_cond;
+#endif
+    queue_t event_queue;
 };
 
 typedef void (*port_driver_init_t)(GlobalContext *global);
@@ -97,7 +140,7 @@ struct NifCollectionDef
 {
     const nif_collection_init_t nif_collection_init_cb;
     const nif_collection_destroy_t nif_collection_destroy_cb;
-    const nif_collection_resolve_nif_t nif_collection_resove_nif_cb;
+    const nif_collection_resolve_nif_t nif_collection_resolve_nif_cb;
 };
 
 struct NifCollectionDefListItem
