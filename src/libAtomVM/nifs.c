@@ -159,7 +159,6 @@ static term nif_atomvm_add_avm_pack_file(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_close_avm_pack(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_get_start_beam(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_read_priv(Context *ctx, int argc, term argv[]);
-static term nif_atomvm_posix_clock_settime(Context *ctx, int argc, term argv[]);
 static term nif_console_print(Context *ctx, int argc, term argv[]);
 static term nif_base64_encode(Context *ctx, int argc, term argv[]);
 static term nif_base64_decode(Context *ctx, int argc, term argv[]);
@@ -167,6 +166,7 @@ static term nif_base64_encode_to_string(Context *ctx, int argc, term argv[]);
 static term nif_base64_decode_to_string(Context *ctx, int argc, term argv[]);
 static term nif_code_load_abs(Context *ctx, int argc, term argv[]);
 static term nif_code_load_binary(Context *ctx, int argc, term argv[]);
+static term nif_lists_reverse(Context *ctx, int argc, term argv[]);
 static term nif_maps_next(Context *ctx, int argc, term argv[]);
 static term nif_unicode_characters_to_list(Context *ctx, int argc, term argv[]);
 static term nif_unicode_characters_to_binary(Context *ctx, int argc, term argv[]);
@@ -660,11 +660,6 @@ static const struct Nif atomvm_read_priv_nif =
     .base.type = NIFFunctionType,
     .nif_ptr = nif_atomvm_read_priv
 };
-static const struct Nif atomvm_posix_clock_settime_nif =
-{
-    .base.type = NIFFunctionType,
-    .nif_ptr = nif_atomvm_posix_clock_settime
-};
 static const struct Nif console_print_nif =
 {
     .base.type = NIFFunctionType,
@@ -699,6 +694,11 @@ static const struct Nif code_load_binary_nif =
 {
     .base.type = NIFFunctionType,
     .nif_ptr = nif_code_load_binary
+};
+static const struct Nif lists_reverse_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_lists_reverse
 };
 static const struct Nif maps_next_nif =
 {
@@ -761,6 +761,13 @@ DEFINE_MATH_NIF(tanh)
 #define IF_HAVE_UNLINK(expr) (expr)
 #else
 #define IF_HAVE_UNLINK(expr) NULL
+#endif
+#if HAVE_CLOCK_SETTIME
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) (expr)
+#elif HAVE_SETTIMEOFDAY
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) (expr)
+#else
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) NULL
 #endif
 
 //Ignore warning caused by gperf generated code
@@ -3810,52 +3817,6 @@ static term nif_atomvm_read_priv(Context *ctx, int argc, term argv[])
     return result;
 }
 
-static term nif_atomvm_posix_clock_settime(Context *ctx, int argc, term argv[])
-{
-    UNUSED(argc);
-
-    VALIDATE_VALUE(argv[0], term_is_atom);
-    if (globalcontext_is_term_equal_to_atom_string(ctx->global, argv[0], ATOM_STR("\x8", "realtime"))) {
-        RAISE_ERROR(BADARG_ATOM);
-    }
-
-    VALIDATE_VALUE(argv[1], term_is_tuple);
-    if (term_get_tuple_arity(argv[1]) != 2) {
-        RAISE_ERROR(BADARG_ATOM);
-    }
-
-#ifdef HAVE_CLOCK_SETTIME
-
-    term secs = term_get_tuple_element(argv[1], 0);
-    VALIDATE_VALUE(secs, term_is_any_integer);
-    avm_int64_t s = term_maybe_unbox_int64(secs);
-
-    term nsecs = term_get_tuple_element(argv[1], 1);
-    VALIDATE_VALUE(nsecs, term_is_any_integer);
-    avm_int64_t ns = term_maybe_unbox_int64(nsecs);
-
-    struct timespec tp = {
-        .tv_sec = s,
-        .tv_nsec = ns
-    };
-
-    int res = clock_settime(CLOCK_REALTIME, &tp);
-    if (res != 0) {
-        if (UNLIKELY(memory_ensure_free(ctx, TUPLE_SIZE(2)) != MEMORY_GC_OK)) {
-            RAISE_ERROR(OUT_OF_MEMORY_ATOM);
-        }
-        term error = term_alloc_tuple(2, &ctx->heap);
-        term_put_tuple_element(error, 0, ERROR_ATOM);
-        term_put_tuple_element(error, 1, posix_errno_to_term(errno, ctx->global));
-        return error;
-    } else {
-        return OK_ATOM;
-    }
-#else
-    RAISE_ERROR(UNDEF_ATOM);
-#endif
-}
-
 static term nif_console_print(Context *ctx, int argc, term argv[])
 {
     UNUSED(argc);
@@ -4284,6 +4245,34 @@ static term nif_code_load_binary(Context *ctx, int argc, term argv[])
     term_put_tuple_element(result, 0, MODULE_ATOM);
     term_put_tuple_element(result, 1, module_name);
 
+    return result;
+}
+
+static term nif_lists_reverse(Context *ctx, int argc, term argv[])
+{
+    // Compared to erlang version, compute the length of the list and allocate
+    // at once the space for the reverse.
+    int proper;
+    size_t len = term_list_length(argv[0], &proper);
+    if (UNLIKELY(!proper)) {
+        RAISE_ERROR(BADARG_ATOM);
+    }
+
+    if (UNLIKELY(memory_ensure_free_with_roots(ctx, len * CONS_SIZE, 2, argv, MEMORY_CAN_SHRINK) != MEMORY_GC_OK)) {
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
+
+    term result = term_nil();
+    if (argc == 2) {
+        result = argv[1];
+    }
+    term list_crsr = argv[0];
+    while (!term_is_nil(list_crsr)) {
+        // term is a proper list as verified above
+        term *list_ptr = term_get_list_ptr(list_crsr);
+        result = term_list_prepend(list_ptr[LIST_HEAD_INDEX], result, &ctx->heap);
+        list_crsr = list_ptr[LIST_TAIL_INDEX];
+    }
     return result;
 }
 

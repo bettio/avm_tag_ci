@@ -41,9 +41,12 @@ set(ERLANG_MODULES
     lists
     maps
     math
+    net
     logger
     logger_std_h
     proplists
+    socket
+    ssl
     string
     timer
     unicode

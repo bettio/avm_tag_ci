@@ -89,7 +89,7 @@ static void unity_run_all_tests()
     }
 }
 
-#define MAIN_AVM ((void *) 0x100A0000)
+#define MAIN_AVM ((void *) 0x10100000)
 
 static term avm_test_case(const char *test_module)
 {
@@ -153,6 +153,12 @@ TEST_CASE(atomvm_smp_0)
 TEST_CASE(test_clocks)
 {
     term ret_value = avm_test_case("test_clocks.beam");
+    TEST_ASSERT_EQUAL_INT(OK_ATOM, ret_value);
+}
+
+TEST_CASE(test_crypto)
+{
+    term ret_value = avm_test_case("test_crypto.beam");
     TEST_ASSERT_EQUAL_INT(OK_ATOM, ret_value);
 }
 
