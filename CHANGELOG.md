@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added minimal support for the OTP `ssl` interface.
 - Added support for `crypto:one_time/4,5` on Unix and Pico as well as for `crypto:hash/2` on Pico
 
+## Changed
+- New atom table, which uses less memory, has improved performances and better code.
+
 ## [0.6.0-alpha.1] - 2023-10-09
 
 ### Added
