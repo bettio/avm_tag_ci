@@ -456,6 +456,7 @@ static wifi_config_t *get_ap_wifi_config(term ap_config, GlobalContext *global)
         int ok = 0;
         psk = interop_term_to_string(pass_term, &ok);
         if (strlen(psk) < 8) {
+            free(ssid);
             ESP_LOGE(TAG, "get_ap_wifi_config: AP PSK must be length 8 or more");
             return NULL;
         }
@@ -594,7 +595,7 @@ static void start_network(Context *ctx, term pid, term ref, term config)
 
     wifi_config_t *sta_wifi_config = get_sta_wifi_config(sta_config, ctx->global);
     wifi_config_t *ap_wifi_config = get_ap_wifi_config(ap_config, ctx->global);
-    if (UNLIKELY(IS_NULL_PTR(sta_wifi_config) && IS_NULL_PTR(ap_wifi_config))) {
+    if (IS_NULL_PTR(sta_wifi_config) && IS_NULL_PTR(ap_wifi_config)) {
         ESP_LOGE(TAG, "Unable to get STA or AP configuration");
         term error = port_create_error_tuple(ctx, BADARG_ATOM);
         port_send_reply(ctx, pid, ref, error);

@@ -60,7 +60,7 @@
     static void *module_uncompress_literals(const uint8_t *litT, int size);
 #endif
 static struct LiteralEntry *module_build_literals_table(const void *literalsBuf);
-static void module_add_label(Module *mod, int index, void *ptr);
+static void module_add_label(Module *mod, int index, const uint8_t *ptr);
 static enum ModuleLoadResult module_build_imported_functions_table(Module *this_module, uint8_t *table_data, GlobalContext *glb);
 static void parse_line_table(uint16_t **line_refs, struct ModuleFilename **filenames, uint8_t *data, size_t len);
 
@@ -80,21 +80,11 @@ static enum ModuleLoadResult module_populate_atoms_table(Module *this_module, ui
         return MODULE_ERROR_FAILED_ALLOCATION;
     }
 
-    const char *atom = NULL;
-    for (int i = 1; i <= atoms_count; i++) {
-        // atom 0 is NON TERM for historical reasons
-        int atom_len = *current_atom;
-        atom = current_atom;
-
-        int global_atom_id = globalcontext_insert_atom(glb, (AtomString) atom);
-        if (UNLIKELY(global_atom_id < 0)) {
-            fprintf(stderr, "Cannot allocate memory while loading module (line: %i).\n", __LINE__);
-            return MODULE_ERROR_FAILED_ALLOCATION;
-        }
-
-        this_module->local_atoms_to_global_table[i] = global_atom_id;
-
-        current_atom += atom_len + 1;
+    long ensure_result = atom_table_ensure_atoms(
+        glb->atom_table, current_atom, atoms_count, this_module->local_atoms_to_global_table + 1);
+    if (ensure_result == ATOM_TABLE_ALLOC_FAIL) {
+        fprintf(stderr, "Cannot allocate memory while loading module (line: %i).\n", __LINE__);
+        return MODULE_ERROR_FAILED_ALLOCATION;
     }
 
     return MODULE_LOAD_OK;
@@ -235,7 +225,7 @@ term module_get_exported_functions(Module *this_module, Heap *heap, GlobalContex
     return result_list;
 }
 
-static void module_add_label(Module *mod, int index, void *ptr)
+static void module_add_label(Module *mod, int index, const uint8_t *ptr)
 {
     mod->labels[index] = ptr;
 }
@@ -412,8 +402,8 @@ term module_load_literal(Module *mod, int index, Context *ctx)
 const struct ExportedFunction *module_resolve_function0(Module *mod, int import_table_index, struct UnresolvedFunctionCall *unresolved, GlobalContext *glb)
 {
 
-    AtomString module_name_atom = (AtomString) valueshashtable_get_value(glb->atoms_ids_table, unresolved->module_atom_index, (unsigned long) NULL);
-    AtomString function_name_atom = (AtomString) valueshashtable_get_value(glb->atoms_ids_table, unresolved->function_atom_index, (unsigned long) NULL);
+    AtomString module_name_atom = atom_table_get_atom_string(glb->atom_table, unresolved->module_atom_index);
+    AtomString function_name_atom = atom_table_get_atom_string(glb->atom_table, unresolved->function_atom_index);
     int arity = unresolved->arity;
 
     Module *found_module = globalcontext_get_module(glb, module_name_atom);

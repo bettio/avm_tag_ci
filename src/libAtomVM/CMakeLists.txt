@@ -24,6 +24,7 @@ project (libAtomVM)
 set(HEADER_FILES
     atom.h
     atomshashtable.h
+    atom_table.h
     avmpack.h
     bif.h
     bitstring.h
@@ -69,6 +70,7 @@ set(HEADER_FILES
 set(SOURCE_FILES
     atom.c
     atomshashtable.c
+    atom_table.c
     avmpack.c
     bif.c
     bitstring.c
@@ -166,7 +168,10 @@ define_if_symbol_exists(libAtomVM O_NOFOLLOW "fcntl.h" PRIVATE HAVE_O_NOFOLLOW)
 define_if_symbol_exists(libAtomVM O_RSYNC "fcntl.h" PRIVATE HAVE_O_RSYNC)
 define_if_symbol_exists(libAtomVM O_SEARCH "fcntl.h" PRIVATE HAVE_O_SEARCH)
 define_if_symbol_exists(libAtomVM O_TTY_INIT "fcntl.h" PRIVATE HAVE_O_TTY_INIT)
-define_if_symbol_exists(libAtomVM clock_settime "sys/time.h" PRIVATE HAVE_CLOCK_SETTIME)
+define_if_symbol_exists(libAtomVM clock_settime "time.h" PRIVATE HAVE_CLOCK_SETTIME)
+define_if_symbol_exists(libAtomVM settimeofday "sys/time.h" PRIVATE HAVE_SETTIMEOFDAY)
+define_if_symbol_exists(libAtomVM socket "sys/socket.h" PUBLIC HAVE_SOCKET)
+define_if_symbol_exists(libAtomVM select "sys/select.h" PUBLIC HAVE_SELECT)
 
 if (AVM_USE_32BIT_FLOAT)
     target_compile_definitions(libAtomVM PUBLIC AVM_USE_SINGLE_PRECISION)

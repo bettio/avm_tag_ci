@@ -139,7 +139,7 @@ enum ExternalTermResult externalterm_from_binary(Context *ctx, term *dst, term b
     size_t len = term_binary_size(binary);
     const uint8_t *data = (const uint8_t *) term_binary_data(binary);
     uint8_t *buf = malloc(len);
-    if (UNLIKELY(IS_NULL_PTR(buf))) {
+    if (IS_NULL_PTR(buf)) {
         fprintf(stderr, "Unable to allocate %zu bytes for binary buffer.\n", len);
         return EXTERNAL_TERM_MALLOC;
     }
@@ -161,7 +161,7 @@ static int externalterm_from_term(uint8_t **buf, size_t *len, term t, GlobalCont
 {
     *len = compute_external_size(t, glb) + 1;
     *buf = malloc(*len);
-    if (UNLIKELY(IS_NULL_PTR(*buf))) {
+    if (IS_NULL_PTR(*buf)) {
         fprintf(stderr, "Unable to allocate %zu bytes for externalized term.\n", *len);
         AVM_ABORT();
     }
@@ -264,15 +264,13 @@ static int serialize_term(uint8_t *buf, term t, GlobalContext *glb)
         return NEW_FLOAT_EXT_SIZE;
 
     } else if (term_is_atom(t)) {
-        AtomString atom_string = globalcontext_atomstring_from_term(glb, t);
-        size_t atom_len = atom_string_len(atom_string);
+        int atom_index = term_to_atom_index(t);
+        size_t atom_len;
+        atom_ref_t atom_ref = atom_table_get_atom_ptr_and_len(glb->atom_table, atom_index, &atom_len);
         if (!IS_NULL_PTR(buf)) {
             buf[0] = ATOM_EXT;
             WRITE_16_UNALIGNED(buf + 1, atom_len);
-            int8_t *atom_data = (int8_t *) atom_string_data(atom_string);
-            for (size_t i = 3; i < atom_len + 3; ++i) {
-                buf[i] = (int8_t) atom_data[i - 3];
-            }
+            atom_table_write_bytes(glb->atom_table, atom_ref, atom_len, buf + 3);
         }
         return 3 + atom_len;
 
