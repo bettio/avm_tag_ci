@@ -54,7 +54,6 @@ struct HNode
 
 struct HNodeGroup
 {
-    struct HNodeGroup *next;
     long first_index;
     uint16_t len;
 
@@ -71,8 +70,8 @@ struct AtomTable
 #endif
     struct HNode **buckets;
 
-    struct HNodeGroup *first_node_group;
-    struct HNodeGroup *last_node_group;
+    struct HNodeGroup **node_groups;
+    int node_group_count;
 };
 
 static struct HNodeGroup *new_node_group(struct AtomTable *table, int len);
@@ -92,8 +91,12 @@ struct AtomTable *atom_table_new()
     htable->count = 0;
     htable->capacity = DEFAULT_SIZE;
 
-    htable->last_node_group = NULL;
-    htable->first_node_group = new_node_group(htable, DEFAULT_SIZE);
+    htable->node_groups = NULL;
+    htable->node_group_count = 0;
+    if (IS_NULL_PTR(new_node_group(htable, DEFAULT_SIZE))) {
+        free(htable);
+        return NULL;
+    }
 
 #ifndef AVM_NO_SMP
     htable->lock = smp_rwlock_create();
@@ -104,11 +107,9 @@ struct AtomTable *atom_table_new()
 
 void atom_table_destroy(struct AtomTable *table)
 {
-    struct HNodeGroup *node_group = table->first_node_group;
-    while (node_group) {
-        struct HNodeGroup *next_group = node_group->next;
+    for (int i = 0; i < table->node_group_count; i++) {
+        struct HNodeGroup *node_group = table->node_groups[i];
         free(node_group);
-        node_group = next_group;
     }
 #ifndef AVM_NO_SMP
     smp_rwlock_destroy(table->lock);
@@ -128,21 +129,31 @@ int atom_table_count(struct AtomTable *table)
 
 static struct HNodeGroup *new_node_group(struct AtomTable *table, int len)
 {
+    size_t node_group_size = (table->node_group_count + 1) * sizeof(struct HNodeGroup *);
+    struct HNodeGroup **new_group_array = realloc(table->node_groups, node_group_size);
+    if (IS_NULL_PTR(new_group_array)) {
+        return NULL;
+    }
+    table->node_groups = new_group_array;
+
     struct HNodeGroup *new_group = malloc(sizeof(struct HNodeGroup) + sizeof(struct HNode) * len);
     if (IS_NULL_PTR(new_group)) {
         return NULL;
     }
-    new_group->next = NULL;
+
     new_group->first_index = table->count;
     new_group->len = len;
 
-    if (LIKELY(table->last_node_group != NULL)) {
-        table->last_node_group->next = new_group;
-    }
-    table->last_node_group = new_group;
     table->last_node_group_avail = len;
+    table->node_groups[table->node_group_count] = new_group;
+    table->node_group_count++;
 
     return new_group;
+}
+
+static inline struct HNodeGroup *last_node_group(struct AtomTable *table)
+{
+    return table->node_groups[table->node_group_count - 1];
 }
 
 static unsigned long sdbm_hash(const unsigned char *str, int len)
@@ -200,24 +211,27 @@ long atom_table_get_index(struct AtomTable *table, AtomString string)
     return result;
 }
 
-// TODO: this function needs use an efficient structure such as a skip list
 static struct HNode *get_node_using_index(struct AtomTable *table, long index)
 {
     if (UNLIKELY(index >= table->count)) {
         return NULL;
     }
 
-    struct HNodeGroup *node_group = table->first_node_group;
-    while (node_group) {
-        long first_index = node_group->first_index;
-        if (first_index + node_group->len > index) {
-            return &node_group->nodes[index - first_index];
+    int start = 0;
+    int end = table->node_group_count - 1;
+
+    while (true) {
+        int mid = (start + end) / 2;
+        struct HNodeGroup *mid_group = table->node_groups[mid];
+        long mid_first_index = mid_group->first_index;
+        if (mid_first_index > index) {
+            end = mid;
+        } else if (index >= mid_first_index + mid_group->len) {
+            start = mid + 1;
+        } else {
+            return &mid_group->nodes[index - mid_first_index];
         }
-
-        node_group = node_group->next;
     }
-
-    return NULL;
 }
 
 AtomString atom_table_get_atom_string(struct AtomTable *table, long index)
@@ -345,11 +359,11 @@ static bool do_rehash(struct AtomTable *table, int new_capacity)
     table->buckets = new_buckets;
     table->capacity = new_capacity;
 
-    struct HNodeGroup *group = table->first_node_group;
-
-    while (group) {
+    for (int i = 0; i < table->node_group_count; i++) {
+        struct HNodeGroup *group = table->node_groups[i];
         int group_count;
-        if (group == table->last_node_group) {
+
+        if (i == table->node_group_count - 1) {
             group_count = group->len - table->last_node_group_avail;
         } else {
             group_count = group->len;
@@ -364,8 +378,6 @@ static bool do_rehash(struct AtomTable *table, int new_capacity)
 
             insert_node_into_bucket(table, bucket_index, node);
         }
-
-        group = group->next;
     }
 
     return true;
@@ -399,7 +411,7 @@ long atom_table_ensure_atom(struct AtomTable *table, AtomString string, enum Ato
         return ATOM_TABLE_NOT_FOUND;
     }
 
-    struct HNodeGroup *node_group = table->last_node_group;
+    struct HNodeGroup *node_group = last_node_group(table);
     if (!table->last_node_group_avail) {
         node_group = new_node_group(table, DEFAULT_SIZE);
         if (IS_NULL_PTR(node_group)) {
@@ -456,7 +468,7 @@ int atom_table_ensure_atoms(
 
     current_atom = atoms;
     int remaining_atoms = new_atoms_count;
-    struct HNodeGroup *node_group = table->last_node_group;
+    struct HNodeGroup *node_group = last_node_group(table);
     for (int i = 0; i < count; i++) {
         if (translate_table[i] == ATOM_TABLE_NOT_FOUND) {
             if (!table->last_node_group_avail) {
