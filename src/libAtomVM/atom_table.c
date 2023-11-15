@@ -211,22 +211,27 @@ long atom_table_get_index(struct AtomTable *table, AtomString string)
     return result;
 }
 
-// TODO: this function needs use an efficient structure such as a skip list
 static struct HNode *get_node_using_index(struct AtomTable *table, long index)
 {
     if (UNLIKELY(index >= table->count)) {
         return NULL;
     }
 
-    for (int i = 0; i < table->node_group_count; i++) {
-        struct HNodeGroup *node_group = table->node_groups[i];
-        long first_index = node_group->first_index;
-        if (first_index + node_group->len > index) {
-            return &node_group->nodes[index - first_index];
+    int start = 0;
+    int end = table->node_group_count - 1;
+
+    while (true) {
+        int mid = (start + end) / 2;
+        struct HNodeGroup *mid_group = table->node_groups[mid];
+        long mid_first_index = mid_group->first_index;
+        if (mid_first_index > index) {
+            end = mid;
+        } else if (index >= mid_first_index + mid_group->len) {
+            start = mid + 1;
+        } else {
+            return &mid_group->nodes[index - mid_first_index];
         }
     }
-
-    return NULL;
 }
 
 AtomString atom_table_get_atom_string(struct AtomTable *table, long index)
