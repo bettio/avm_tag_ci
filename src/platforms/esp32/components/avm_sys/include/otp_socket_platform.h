@@ -1,7 +1,7 @@
 /*
  * This file is part of AtomVM.
  *
- * Copyright 2018 Riccardo Binetti <rbino@gmx.com>
+ * Copyright 2023 by Fred Dushin <fred@dushin.net>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,28 @@
  * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
  */
 
-#ifndef _GPIODRIVER_H_
-#define _GPIODRIVER_H_
+#ifndef __OTP_SOCKET_PLATFORM_H__
+#define __OTP_SOCKET_PLATFORM_H__
 
-#include <context.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void gpiodriver_init(Context *ctx);
+#include <esp_log.h>
+
+#define TAG "otp_socket"
+
+#define AVM_LOGI ESP_LOGI
+#define AVM_LOGW ESP_LOGW
+#define AVM_LOGE ESP_LOGE
+
+inline bool otp_socket_platform_supports_peek()
+{
+    return true;
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -21,7 +21,8 @@
 -module(pico_blink).
 -export([start/0]).
 
-% 25 is on-board led on Pico & Pico-W
+% 25 is on-board led on Pico
+% This code will not work on Pico-W where GPIO 25 has another purpose.
 -define(GPIO_NUM, 25).
 
 start() ->

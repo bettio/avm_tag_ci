@@ -43,9 +43,11 @@ compile_erlang(test_list_to_binary)
 compile_erlang(test_md5)
 compile_erlang(test_crypto)
 compile_erlang(test_monotonic_time)
+compile_erlang(test_net)
 compile_erlang(test_rtc_slow)
 compile_erlang(test_select)
 compile_erlang(test_socket)
+compile_erlang(test_ssl)
 compile_erlang(test_time_and_processes)
 compile_erlang(test_tz)
 
@@ -59,9 +61,11 @@ add_custom_command(
         test_md5.beam
         test_crypto.beam
         test_monotonic_time.beam
+        test_net.beam
         test_rtc_slow.beam
         test_select.beam
         test_socket.beam
+        test_ssl.beam
         test_time_and_processes.beam
         test_tz.beam
     DEPENDS
@@ -72,9 +76,11 @@ add_custom_command(
         "${CMAKE_CURRENT_BINARY_DIR}/test_md5.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_crypto.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_monotonic_time.beam"
+        "${CMAKE_CURRENT_BINARY_DIR}/test_net.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_rtc_slow.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_select.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_socket.beam"
+        "${CMAKE_CURRENT_BINARY_DIR}/test_ssl.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_time_and_processes.beam"
         "${CMAKE_CURRENT_BINARY_DIR}/test_tz.beam"
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}

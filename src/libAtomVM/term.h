@@ -87,6 +87,12 @@ extern "C" {
 #define TUPLE_SIZE(elems) ((int) (elems + 1))
 #define CONS_SIZE 2
 #define REFC_BINARY_CONS_OFFSET 4
+#define LIST_SIZE(num_elements, element_size) ((num_elements) * ((element_size) + CONS_SIZE))
+#define TERM_MAP_SIZE(num_elements) (3 + 2 * (num_elements))
+#define TERM_MAP_SHARED_SIZE(num_elements) (2 + (num_elements))
+
+#define LIST_HEAD_INDEX 1
+#define LIST_TAIL_INDEX 0
 
 #define TERM_BINARY_SIZE_IS_HEAP(size) ((size) < REFC_BINARY_MIN)
 
@@ -1040,6 +1046,9 @@ static inline term term_maybe_create_sub_binary(term binary, size_t offset, size
 {
     if (term_is_refc_binary(binary) && len >= SUB_BINARY_MIN) {
         return term_alloc_sub_binary(binary, offset, len, heap);
+    } else if (term_is_sub_binary(binary) && len >= SUB_BINARY_MIN) {
+        const term *boxed_value = term_to_const_term_ptr(binary);
+        return term_alloc_sub_binary(boxed_value[3], boxed_value[2] + offset, len, heap);
     } else {
         const char *data = term_binary_data(binary);
         return term_from_literal_binary(data + offset, len, heap, glb);
@@ -1288,7 +1297,7 @@ static inline term term_list_from_list_ptr(term *list_elem)
 static inline term term_get_list_head(term t)
 {
     term *list_ptr = term_get_list_ptr(t);
-    return list_ptr[1];
+    return list_ptr[LIST_HEAD_INDEX];
 }
 
 /**
@@ -1300,7 +1309,7 @@ static inline term term_get_list_head(term t)
 static inline term term_get_list_tail(term t)
 {
     term *list_ptr = term_get_list_ptr(t);
-    return *list_ptr;
+    return list_ptr[LIST_TAIL_INDEX];
 }
 
 /**
@@ -1312,7 +1321,7 @@ static inline term term_get_list_tail(term t)
  */
 MALLOC_LIKE static inline term *term_list_alloc(Heap *heap)
 {
-    return memory_heap_alloc(heap, 2);
+    return memory_heap_alloc(heap, CONS_SIZE);
 }
 
 /**
@@ -1589,12 +1598,12 @@ static inline size_t term_get_map_value_offset()
 
 static inline int term_map_size_in_terms_maybe_shared(size_t num_entries, bool is_shared)
 {
-    return 2 + (is_shared ? 0 : (1 + num_entries)) + num_entries;
+    return is_shared ? TERM_MAP_SHARED_SIZE(num_entries) : TERM_MAP_SIZE(num_entries);
 }
 
 static inline int term_map_size_in_terms(size_t num_entries)
 {
-    return term_map_size_in_terms_maybe_shared(num_entries, false);
+    return TERM_MAP_SIZE(num_entries);
 }
 
 static inline term term_alloc_map_maybe_shared(avm_uint_t size, term keys, Heap *heap)

@@ -25,10 +25,8 @@ avm_lib="${avm_root}/lib"
 nargs=$#
 if [ "${nargs}" -eq "0" ]
 then
-    echo "%%"
-    echo "%% Error!  Syntax: ${0} [<avm-file>]+"
-    echo "%%"
+    "${avm_lib}/atomvm/AtomVM" -h
     exit 1
 fi
 
-exec "${avm_lib}/atomvm/AtomVM" $@ "${avm_lib}/atomvm/atomvm.avm"
+exec "${avm_lib}/atomvm/AtomVM" $@ "${avm_lib}/atomvm/atomvmlib.avm"

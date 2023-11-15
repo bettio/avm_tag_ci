@@ -31,7 +31,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "atomshashtable.h"
+#include "atom_table.h"
 #include "avmpack.h"
 #include "bif.h"
 #include "context.h"
@@ -159,7 +159,6 @@ static term nif_atomvm_add_avm_pack_file(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_close_avm_pack(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_get_start_beam(Context *ctx, int argc, term argv[]);
 static term nif_atomvm_read_priv(Context *ctx, int argc, term argv[]);
-static term nif_atomvm_posix_clock_settime(Context *ctx, int argc, term argv[]);
 static term nif_console_print(Context *ctx, int argc, term argv[]);
 static term nif_base64_encode(Context *ctx, int argc, term argv[]);
 static term nif_base64_decode(Context *ctx, int argc, term argv[]);
@@ -167,6 +166,7 @@ static term nif_base64_encode_to_string(Context *ctx, int argc, term argv[]);
 static term nif_base64_decode_to_string(Context *ctx, int argc, term argv[]);
 static term nif_code_load_abs(Context *ctx, int argc, term argv[]);
 static term nif_code_load_binary(Context *ctx, int argc, term argv[]);
+static term nif_lists_reverse(Context *ctx, int argc, term argv[]);
 static term nif_maps_next(Context *ctx, int argc, term argv[]);
 static term nif_unicode_characters_to_list(Context *ctx, int argc, term argv[]);
 static term nif_unicode_characters_to_binary(Context *ctx, int argc, term argv[]);
@@ -660,11 +660,6 @@ static const struct Nif atomvm_read_priv_nif =
     .base.type = NIFFunctionType,
     .nif_ptr = nif_atomvm_read_priv
 };
-static const struct Nif atomvm_posix_clock_settime_nif =
-{
-    .base.type = NIFFunctionType,
-    .nif_ptr = nif_atomvm_posix_clock_settime
-};
 static const struct Nif console_print_nif =
 {
     .base.type = NIFFunctionType,
@@ -699,6 +694,11 @@ static const struct Nif code_load_binary_nif =
 {
     .base.type = NIFFunctionType,
     .nif_ptr = nif_code_load_binary
+};
+static const struct Nif lists_reverse_nif =
+{
+    .base.type = NIFFunctionType,
+    .nif_ptr = nif_lists_reverse
 };
 static const struct Nif maps_next_nif =
 {
@@ -761,6 +761,13 @@ DEFINE_MATH_NIF(tanh)
 #define IF_HAVE_UNLINK(expr) (expr)
 #else
 #define IF_HAVE_UNLINK(expr) NULL
+#endif
+#if HAVE_CLOCK_SETTIME
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) (expr)
+#elif HAVE_SETTIMEOFDAY
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) (expr)
+#else
+#define IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(expr) NULL
 #endif
 
 //Ignore warning caused by gperf generated code
@@ -1940,14 +1947,9 @@ static term binary_to_atom(Context *ctx, int argc, term argv[], int create_new)
         RAISE_ERROR(BADARG_ATOM);
     }
 
-    char *atom_string = interop_binary_to_string(a_binary);
-    if (IS_NULL_PTR(atom_string)) {
-        fprintf(stderr, "Failed to alloc temporary string\n");
-        AVM_ABORT();
-    }
-    int atom_string_len = strlen(atom_string);
+    const char *atom_string = term_binary_data(a_binary);
+    size_t atom_string_len = term_binary_size(a_binary);
     if (UNLIKELY(atom_string_len > 255)) {
-        free(atom_string);
         RAISE_ERROR(SYSTEM_LIMIT_ATOM);
     }
 
@@ -1955,21 +1957,18 @@ static term binary_to_atom(Context *ctx, int argc, term argv[], int create_new)
     ((uint8_t *) atom)[0] = atom_string_len;
     memcpy(((char *) atom) + 1, atom_string, atom_string_len);
 
-    unsigned long global_atom_index = atomshashtable_get_value(ctx->global->atoms_table, atom, ULONG_MAX);
-    int has_atom = (global_atom_index != ULONG_MAX);
-
-    if (create_new || has_atom) {
-        if (!has_atom) {
-            global_atom_index = globalcontext_insert_atom(ctx->global, atom);
-        } else {
-            free((void *) atom);
-        }
-        return term_from_atom_index(global_atom_index);
-
-    } else {
-        free((void *) atom);
-        RAISE_ERROR(BADARG_ATOM);
+    enum AtomTableCopyOpt atom_opts = AtomTableCopyAtom;
+    if (!create_new) {
+        atom_opts |= AtomTableAlreadyExisting;
     }
+    long global_atom_index = atom_table_ensure_atom(ctx->global->atom_table, atom, atom_opts);
+    free((void *) atom);
+    if (UNLIKELY(global_atom_index == ATOM_TABLE_NOT_FOUND)) {
+        RAISE_ERROR(BADARG_ATOM);
+    } else if (UNLIKELY(global_atom_index == ATOM_TABLE_ALLOC_FAIL)) {
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
+    return term_from_atom_index(global_atom_index);
 }
 
 term nif_erlang_list_to_atom_1(Context *ctx, int argc, term argv[])
@@ -1992,8 +1991,7 @@ term list_to_atom(Context *ctx, int argc, term argv[], int create_new)
     int ok;
     char *atom_string = interop_list_to_string(a_list, &ok);
     if (UNLIKELY(!ok)) {
-        fprintf(stderr, "Failed to alloc temporary string\n");
-        AVM_ABORT();
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
     }
     int atom_string_len = strlen(atom_string);
     if (UNLIKELY(atom_string_len > 255)) {
@@ -2002,24 +2000,26 @@ term list_to_atom(Context *ctx, int argc, term argv[], int create_new)
     }
 
     AtomString atom = malloc(atom_string_len + 1);
+    if (IS_NULL_PTR(atom)) {
+        free(atom_string);
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
     ((uint8_t *) atom)[0] = atom_string_len;
     memcpy(((char *) atom) + 1, atom_string, atom_string_len);
+    free(atom_string);
 
-    unsigned long global_atom_index = atomshashtable_get_value(ctx->global->atoms_table, atom, ULONG_MAX);
-    int has_atom = (global_atom_index != ULONG_MAX);
-
-    if (create_new || has_atom) {
-        if (!has_atom) {
-            global_atom_index = globalcontext_insert_atom(ctx->global, atom);
-        } else {
-            free((void *) atom);
-        }
-        return term_from_atom_index(global_atom_index);
-
-    } else {
-        free((void *) atom);
-        RAISE_ERROR(BADARG_ATOM);
+    enum AtomTableCopyOpt atom_opts = AtomTableCopyAtom;
+    if (!create_new) {
+        atom_opts |= AtomTableAlreadyExisting;
     }
+    long global_atom_index = atom_table_ensure_atom(ctx->global->atom_table, atom, atom_opts);
+    free((void *) atom);
+    if (UNLIKELY(global_atom_index == ATOM_TABLE_NOT_FOUND)) {
+        RAISE_ERROR(BADARG_ATOM);
+    } else if (UNLIKELY(global_atom_index == ATOM_TABLE_ALLOC_FAIL)) {
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
+    return term_from_atom_index(global_atom_index);
 }
 
 static term nif_erlang_atom_to_binary_2(Context *ctx, int argc, term argv[])
@@ -2033,17 +2033,19 @@ static term nif_erlang_atom_to_binary_2(Context *ctx, int argc, term argv[])
         RAISE_ERROR(BADARG_ATOM);
     }
 
-    int atom_index = term_to_atom_index(atom_term);
-    AtomString atom_string = (AtomString) valueshashtable_get_value(ctx->global->atoms_ids_table, atom_index, (unsigned long) NULL);
+    GlobalContext *glb = ctx->global;
 
-    int atom_len = atom_string_len(atom_string);
+    int atom_index = term_to_atom_index(atom_term);
+    size_t atom_len;
+    atom_ref_t atom_ref = atom_table_get_atom_ptr_and_len(glb->atom_table, atom_index, &atom_len);
 
     if (UNLIKELY(memory_ensure_free_opt(ctx, term_binary_heap_size(atom_len), MEMORY_CAN_SHRINK) != MEMORY_GC_OK)) {
         RAISE_ERROR(OUT_OF_MEMORY_ATOM);
     }
 
-    const char *atom_data = (const char *) atom_string_data(atom_string);
-    return term_from_literal_binary(atom_data, atom_len, &ctx->heap, ctx->global);
+    term binary = term_create_uninitialized_binary(atom_len, &ctx->heap, glb);
+    atom_table_write_bytes(glb->atom_table, atom_ref, atom_len, (char *) term_binary_data(binary));
+    return binary;
 }
 
 static term nif_erlang_atom_to_list_1(Context *ctx, int argc, term argv[])
@@ -2054,19 +2056,30 @@ static term nif_erlang_atom_to_list_1(Context *ctx, int argc, term argv[])
     VALIDATE_VALUE(atom_term, term_is_atom);
 
     int atom_index = term_to_atom_index(atom_term);
-    AtomString atom_string = (AtomString) valueshashtable_get_value(ctx->global->atoms_ids_table, atom_index, (unsigned long) NULL);
+    size_t atom_len;
 
-    int atom_len = atom_string_len(atom_string);
+    atom_ref_t atom_ref
+        = atom_table_get_atom_ptr_and_len(ctx->global->atom_table, atom_index, &atom_len);
+
+    // TODO: use stack for smaller atoms
+    char *atom_buf = malloc(atom_len);
+    if (IS_NULL_PTR(atom_buf)) {
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
 
     if (UNLIKELY(memory_ensure_free_opt(ctx, atom_len * 2, MEMORY_CAN_SHRINK) != MEMORY_GC_OK)) {
         RAISE_ERROR(OUT_OF_MEMORY_ATOM);
     }
 
+    atom_table_write_bytes(ctx->global->atom_table, atom_ref, atom_len, atom_buf);
+
     term prev = term_nil();
     for (int i = atom_len - 1; i >= 0; i--) {
-        char c = ((const char *) atom_string_data(atom_string))[i];
+        char c = atom_buf[i];
         prev = term_list_prepend(term_from_int11(c), prev, &ctx->heap);
     }
+
+    free(atom_buf);
 
     return prev;
 }
@@ -2666,7 +2679,7 @@ static term nif_erlang_system_info(Context *ctx, int argc, term argv[])
         return term_from_int32(nif_num_ports(ctx->global));
     }
     if (key == ATOM_COUNT_ATOM) {
-        return term_from_int32(ctx->global->atoms_table->count);
+        return term_from_int32(atom_table_count(ctx->global->atom_table));
     }
     if (key == WORDSIZE_ATOM) {
         return term_from_int32(TERM_BYTES);
@@ -3755,13 +3768,10 @@ static term nif_atomvm_read_priv(Context *ctx, int argc, term argv[])
     }
 
     int atom_index = term_to_atom_index(app_term);
-    AtomString atom_string = (AtomString) valueshashtable_get_value(glb->atoms_ids_table,
-        atom_index, (unsigned long) NULL);
-
-    int app_len = atom_string_len(atom_string);
+    size_t app_len;
+    atom_ref_t atom_ref = atom_table_get_atom_ptr_and_len(glb->atom_table, atom_index, &app_len);
     char *app = malloc(app_len + 1);
-    memcpy(app, (const char *) atom_string_data(atom_string), app_len);
-    app[app_len] = '\0';
+    atom_table_write_cstring(glb->atom_table, atom_ref, app_len + 1, app);
 
     int ok;
     char *path = interop_term_to_string(path_term, &ok);
@@ -3808,52 +3818,6 @@ static term nif_atomvm_read_priv(Context *ctx, int argc, term argv[])
 
     free(complete_path);
     return result;
-}
-
-static term nif_atomvm_posix_clock_settime(Context *ctx, int argc, term argv[])
-{
-    UNUSED(argc);
-
-    VALIDATE_VALUE(argv[0], term_is_atom);
-    if (globalcontext_is_term_equal_to_atom_string(ctx->global, argv[0], ATOM_STR("\x8", "realtime"))) {
-        RAISE_ERROR(BADARG_ATOM);
-    }
-
-    VALIDATE_VALUE(argv[1], term_is_tuple);
-    if (term_get_tuple_arity(argv[1]) != 2) {
-        RAISE_ERROR(BADARG_ATOM);
-    }
-
-#ifdef HAVE_CLOCK_SETTIME
-
-    term secs = term_get_tuple_element(argv[1], 0);
-    VALIDATE_VALUE(secs, term_is_any_integer);
-    avm_int64_t s = term_maybe_unbox_int64(secs);
-
-    term nsecs = term_get_tuple_element(argv[1], 1);
-    VALIDATE_VALUE(nsecs, term_is_any_integer);
-    avm_int64_t ns = term_maybe_unbox_int64(nsecs);
-
-    struct timespec tp = {
-        .tv_sec = s,
-        .tv_nsec = ns
-    };
-
-    int res = clock_settime(CLOCK_REALTIME, &tp);
-    if (res != 0) {
-        if (UNLIKELY(memory_ensure_free(ctx, TUPLE_SIZE(2)) != MEMORY_GC_OK)) {
-            RAISE_ERROR(OUT_OF_MEMORY_ATOM);
-        }
-        term error = term_alloc_tuple(2, &ctx->heap);
-        term_put_tuple_element(error, 0, ERROR_ATOM);
-        term_put_tuple_element(error, 1, posix_errno_to_term(errno, ctx->global));
-        return error;
-    } else {
-        return OK_ATOM;
-    }
-#else
-    RAISE_ERROR(UNDEF_ATOM);
-#endif
 }
 
 static term nif_console_print(Context *ctx, int argc, term argv[])
@@ -4284,6 +4248,34 @@ static term nif_code_load_binary(Context *ctx, int argc, term argv[])
     term_put_tuple_element(result, 0, MODULE_ATOM);
     term_put_tuple_element(result, 1, module_name);
 
+    return result;
+}
+
+static term nif_lists_reverse(Context *ctx, int argc, term argv[])
+{
+    // Compared to erlang version, compute the length of the list and allocate
+    // at once the space for the reverse.
+    int proper;
+    size_t len = term_list_length(argv[0], &proper);
+    if (UNLIKELY(!proper)) {
+        RAISE_ERROR(BADARG_ATOM);
+    }
+
+    if (UNLIKELY(memory_ensure_free_with_roots(ctx, len * CONS_SIZE, 2, argv, MEMORY_CAN_SHRINK) != MEMORY_GC_OK)) {
+        RAISE_ERROR(OUT_OF_MEMORY_ATOM);
+    }
+
+    term result = term_nil();
+    if (argc == 2) {
+        result = argv[1];
+    }
+    term list_crsr = argv[0];
+    while (!term_is_nil(list_crsr)) {
+        // term is a proper list as verified above
+        term *list_ptr = term_get_list_ptr(list_crsr);
+        result = term_list_prepend(list_ptr[LIST_HEAD_INDEX], result, &ctx->heap);
+        list_crsr = list_ptr[LIST_TAIL_INDEX];
+    }
     return result;
 }
 
