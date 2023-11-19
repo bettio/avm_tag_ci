@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Crypto functions on generic_unix platform now rely on MbedTLS instead of OpenSSL
+- Implement `atomvm:random/0` and `atomvm:rand_bytes/1` on top of `crypto:strong_rand_bytes/1`
 
 ### Added
 
@@ -37,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added ability to configure STM32 Nucleo boards onboard UART->USB-COM using the `-DBOARD=nucleo` cmake option
 - Added STM32 cmake option `-DAVM_CFG_CONSOLE=` to select a different uart peripheral for the system console
 - Added `crypto:strong_rand_bytes/1` using Mbed-TLS
+
+### Removed
+
+- OpenSSL support, Mbed-TLS is required instead.
 
 ## [0.6.0-alpha.1] - 2023-10-09
 
