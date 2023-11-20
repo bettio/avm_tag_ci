@@ -87,7 +87,7 @@ jobs:
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
 
         - arch: "arm32v7"
-          build_name: "linux-arm32v7thl-openssl1"
+          build_name: "linux-arm32v7thl"
           docker_image: "arm32v7/debian"
           platform: "arm/v7"
           tag: "stretch"
@@ -105,13 +105,6 @@ jobs:
             apt install -y -t stretch-backports-sloppy libarchive13 &&
             apt install -y -t stretch-backports cmake &&
             apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
-
-        - arch: "arm32v7"
-          build_name: "linux-arm32v7thl"
-          docker_image: "arm32v7/ubuntu"
-          platform: "arm/v7"
-          tag: "22.04"
-          cflags: "-mfloat-abi=hard -mthumb -mthumb-interwork"
 
         - arch: "arm64v8"
           build_name: "linux-arm64v8"
@@ -131,13 +124,6 @@ jobs:
           build_name: "linux-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
-          tag: "22.04"
-          cflags: ""
-
-        - arch: "x86_64"
-          build_name: "linux-x86_64-openssl1"
-          docker_image: "ubuntu"
-          platform: "amd64"
           tag: "18.04"
           cflags: ""
           install_deps: |
@@ -150,7 +136,7 @@ jobs:
             ln -sf /opt/cmake-3.13.5/bin/* /usr/bin/
 
         - arch: "i386"
-          build_name: "linux-i386-openssl1"
+          build_name: "linux-i386"
           docker_image: "i386/debian"
           platform: "386"
           cflags: ""
