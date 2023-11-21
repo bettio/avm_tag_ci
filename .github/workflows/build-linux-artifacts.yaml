@@ -84,7 +84,7 @@ jobs:
             apt update &&
             apt install -y -t stretch-backports-sloppy libarchive13 &&
             apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev tzdata
 
         - arch: "arm32v7"
           build_name: "linux-arm32v7thl"
@@ -104,7 +104,7 @@ jobs:
             apt update &&
             apt install -y -t stretch-backports-sloppy libarchive13 &&
             apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev tzdata
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev tzdata
 
         - arch: "arm64v8"
           build_name: "linux-arm64v8"
@@ -128,7 +128,7 @@ jobs:
           cflags: ""
           install_deps: |
             apt update &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev wget tzdata &&
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev wget tzdata &&
             apt purge -y cmake &&
             wget https://cmake.org/files/v3.13/cmake-3.13.5-Linux-x86_64.tar.gz &&
             tar xf cmake-3.13.5-Linux-x86_64.tar.gz &&
@@ -153,7 +153,7 @@ jobs:
             apt update &&
             apt install -y -t stretch-backports-sloppy libarchive13 &&
             apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libssl-dev
+            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev
 
     steps:
     - name: Checkout repo
@@ -187,7 +187,7 @@ jobs:
             ${{ matrix.install_deps }}
         else
             apt update &&
-            apt install -y file gcc g++ binutils cmake make doxygen gperf zlib1g-dev libssl-dev tzdata
+            apt install -y file gcc g++ binutils cmake make doxygen gperf zlib1g-dev libmbedtls-dev tzdata
         fi &&
         file /bin/bash &&
         uname -a &&
