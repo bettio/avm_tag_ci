@@ -33,6 +33,8 @@
 # If it doesn't work, search for MBEDTLS_VERSION_NUMBER symbol as well as
 # the three libraries we need with check_symbol_exists and find_library
 
+option(AVM_STATIC_MBEDTLS "Static link Mbed-TLS." OFF)
+
 if (MBEDTLS_ROOT_DIR)
     set(MbedTLS_FOUND TRUE)
     if (NOT MBEDTLS_LIBRARIES_DIR)
@@ -65,11 +67,17 @@ else()
     if (MbedTLS_FOUND)
         message(STATUS "Found MbedTLS package ${MbedTLS_FOUND}")
     else()
+        if (AVM_STATIC_MBEDTLS)
+            set(MBEDCRYPTO_STATIC "libmbedcrypto.a")
+            set(MBEDX509_STATIC "libmbedx509.a")
+            set(MBEDTLS_STATIC "libmbedtls.a")
+        endif()
+
         include(CheckSymbolExists)
         check_symbol_exists(MBEDTLS_VERSION_NUMBER "mbedtls/version.h" HAVE_MBEDTLS_VERSION_NUMBER)
-        find_library(MBEDCRYPTO mbedcrypto)
-        find_library(MBEDX509 mbedx509)
-        find_library(MBEDTLS mbedtls)
+        find_library(MBEDCRYPTO NAMES ${MBEDCRYPTO_STATIC} mbedcrypto)
+        find_library(MBEDX509 NAMES ${MBEDX509_STATIC} mbedx509)
+        find_library(MBEDTLS NAMES ${MBEDTLS_STATIC} mbedtls)
         if (HAVE_MBEDTLS_VERSION_NUMBER
             AND NOT ${MBEDCRYPTO} STREQUAL "MBEDCRYPTO-NOTFOUND"
             AND NOT ${MBEDX509} STREQUAL "MBEDX509-NOTFOUND"
