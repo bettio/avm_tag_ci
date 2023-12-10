@@ -88,23 +88,10 @@ jobs:
 
         - arch: "arm32v7"
           build_name: "linux-arm32v7thl"
-          docker_image: "arm32v7/debian"
+          docker_image: "arm32v7/ubuntu"
           platform: "arm/v7"
           tag: "stretch"
           cflags: "-mfloat-abi=hard -mthumb -mthumb-interwork"
-          sources: |
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports main
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports-sloppy main
-            deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
-            deb-src [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch main
-            deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main
-          # Workaround from https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=954852
-          install_deps: |
-            apt update &&
-            apt install -y -t stretch-backports-sloppy libarchive13 &&
-            apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev tzdata
 
         - arch: "arm64v8"
           build_name: "linux-arm64v8"
@@ -140,36 +127,15 @@ jobs:
           build_name: "linux-x86_64"
           docker_image: "ubuntu"
           platform: "amd64"
-          tag: "18.04"
+          tag: "20.04"
           cflags: ""
-          install_deps: |
-            apt update &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev wget tzdata &&
-            apt purge -y cmake &&
-            wget https://cmake.org/files/v3.13/cmake-3.13.5-Linux-x86_64.tar.gz &&
-            tar xf cmake-3.13.5-Linux-x86_64.tar.gz &&
-            mv cmake-3.13.5-Linux-x86_64 /opt/cmake-3.13.5 &&
-            ln -sf /opt/cmake-3.13.5/bin/* /usr/bin/
 
         - arch: "i386"
           build_name: "linux-i386"
-          docker_image: "i386/debian"
+          docker_image: "i386/ubuntu"
           platform: "386"
           cflags: ""
-          tag: "stretch"
-          sources: |
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports main
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch-backports-sloppy main
-            deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
-            deb-src [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main
-            deb [trusted=yes] http://archive.debian.org/debian/ stretch main
-            deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main
-          # Workaround from https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=954852
-          install_deps: |
-            apt update &&
-            apt install -y -t stretch-backports-sloppy libarchive13 &&
-            apt install -y -t stretch-backports cmake &&
-            apt install -y file gcc g++ binutils make doxygen gperf zlib1g-dev libmbedtls-dev
+          tag: "20.04"
 
     steps:
     - name: Checkout repo
