@@ -63,6 +63,9 @@ void app_main()
     fprintf(stdout, "%s", ATOMVM_BANNER);
     ESP_LOGI(TAG, "Starting AtomVM revision " ATOMVM_VERSION);
 
+    fprintf(stderr, "CONFIG_PTHREAD_STACK_MIN: %i\n", CONFIG_PTHREAD_STACK_MIN);
+    fprintf(stderr, "CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT: %i\n", CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT);
+
     spi_flash_mmap_handle_t handle;
     int size;
     const void *startup_avm = esp32_sys_mmap_partition("boot.avm", &handle, &size);
