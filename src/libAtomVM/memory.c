@@ -31,6 +31,8 @@
 #include "tempstack.h"
 #include "term.h"
 
+#include "esp_attr.h"
+
 // #define ENABLE_TRACE
 
 #include "trace.h"
@@ -118,7 +120,7 @@ static size_t next_fibonacci_heap_size(size_t size)
 
 #define FIBONACCI_HEAP_GROWTH_REDUCTION_THRESHOLD 10000
 
-enum MemoryGCResult memory_ensure_free_with_roots(Context *c, size_t size, size_t num_roots, term *roots, enum MemoryAllocMode alloc_mode)
+IRAM_ATTR enum MemoryGCResult memory_ensure_free_with_roots(Context *c, size_t size, size_t num_roots, term *roots, enum MemoryAllocMode alloc_mode)
 {
     size_t free_space = context_avail_free_memory(c);
     if (alloc_mode == MEMORY_NO_GC) {
@@ -224,7 +226,7 @@ static inline void push_to_stack(term **stack, term value)
     **stack = value;
 }
 
-static enum MemoryGCResult memory_gc(Context *ctx, size_t new_size, size_t num_roots, term *roots)
+IRAM_ATTR static enum MemoryGCResult memory_gc(Context *ctx, size_t new_size, size_t num_roots, term *roots)
 {
     TRACE("Going to perform gc on process %i\n", ctx->process_id);
     size_t min_heap_size = ctx->has_min_heap_size ? ctx->min_heap_size : 0;
@@ -452,7 +454,7 @@ unsigned long memory_estimate_usage(term t)
     return acc;
 }
 
-static void memory_scan_and_copy(HeapFragment *old_fragment, term *mem_start, const term *mem_end, term **new_heap_pos, term *mso_list, bool move)
+IRAM_ATTR static void memory_scan_and_copy(HeapFragment *old_fragment, term *mem_start, const term *mem_end, term **new_heap_pos, term *mso_list, bool move)
 {
     term *ptr = mem_start;
     term *new_heap = *new_heap_pos;
@@ -580,7 +582,7 @@ static void memory_scan_and_copy(HeapFragment *old_fragment, term *mem_start, co
     *new_heap_pos = new_heap;
 }
 
-HOT_FUNC static inline bool memory_heap_fragment_contains_pointer(HeapFragment *old_fragment, term *ptr)
+IRAM_ATTR HOT_FUNC static inline bool memory_heap_fragment_contains_pointer(HeapFragment *old_fragment, term *ptr)
 {
     do {
         if (ptr >= old_fragment->storage && ptr < old_fragment->heap_end) {
@@ -591,7 +593,7 @@ HOT_FUNC static inline bool memory_heap_fragment_contains_pointer(HeapFragment *
     return false;
 }
 
-HOT_FUNC static term memory_shallow_copy_term(HeapFragment *old_fragment, term t, term **new_heap, bool move)
+IRAM_ATTR HOT_FUNC static term memory_shallow_copy_term(HeapFragment *old_fragment, term t, term **new_heap, bool move)
 {
     if (term_is_atom(t)) {
         return t;
