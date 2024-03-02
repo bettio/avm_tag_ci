@@ -18,7 +18,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 #
 
-idf_component_register(INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../libAtomVM")
+idf_component_register(INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../../../../libAtomVM" PRIV_REQUIRES "esp_common" )
 
 # GCC complains about "warning: #include_next is a GCC extension" when using pedantic flag
 # "pedantic" flag should be disabled rather poluting diagnostics with warnings caused from 3rd party
