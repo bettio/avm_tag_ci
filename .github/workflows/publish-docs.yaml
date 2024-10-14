@@ -123,6 +123,8 @@ jobs:
           git config --local user.email "atomvm-doc-bot@users.noreply.github.com"
           git config --local user.name "AtomVM Doc Bot"
           ls -la doc/
+          ls -la doc/release-0.6/
+          git diff
           git add .
           git diff --exit-code Production || echo "Going to commit"
           git diff --exit-code Production || git commit -m "Update Documentation"
