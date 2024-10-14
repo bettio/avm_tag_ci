@@ -15,8 +15,7 @@ on:
     tags:
       - '**'
     branches:
-      - 'main'
-      - 'release-**'
+      - '**'
     paths:
       - '.github/workflows/publish-docs.yaml'
       - 'CMakeLists.txt'
