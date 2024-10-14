@@ -155,10 +155,10 @@ if(SPHINX_FOUND)
     ## This target is intended for CI `Publish Docs` workflow.
     if ($ENV{CI})
         add_custom_target(GitHub_CI_Publish_Docs
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/html /home/runner/work/AtomVM/AtomVM/www/doc/${DOC_TREE_VERSION}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/html /home/runner/work/avm_tag_ci/avm_tag_ci/www/doc/${DOC_TREE_VERSION}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Copying html docs to publish location /home/runner/work/AtomVM/AtomVM/www/doc/${DOC_TREE_VERSION}." VERBATIM
-            DEPENDS doc /home/runner/work/AtomVM/AtomVM/www/doc $ENV{DOC_TREE_VERSION}
+            COMMENT "Copying html docs to publish location /home/runner/work/avm_tag_ci/avm_tag_ci/www/doc/${DOC_TREE_VERSION}." VERBATIM
+            DEPENDS doc /home/runner/work/avm_tag_ci/avm_tag_ci/www/doc $ENV{DOC_TREE_VERSION}
         )
     endif()
 
@@ -185,8 +185,8 @@ add_custom_target(doc #ALL
 if (TARGET GitHub_CI_Publish_Docs)
 
     add_custom_command(
-        COMMAND mkdir -p /home/runner/work/AtomVM/AtomVM/www/doc
-        OUTPUT /home/runner/work/AtomVM/AtomVM/www/doc
+        COMMAND mkdir -p /home/runner/work/avm_tag_ci/avm_tag_ci/www/doc
+        OUTPUT /home/runner/work/avm_tag_ci/avm_tag_ci/www/doc
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Prepare publish directory structure." VERBATIM
     )
