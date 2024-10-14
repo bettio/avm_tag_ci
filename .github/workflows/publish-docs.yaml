@@ -136,4 +136,4 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add push_dest "git@github.com:atomvm/atomvm_www.git"
           git fetch push_dest
-          git push --set-upstream push_dest Production
+          #git push --set-upstream push_dest Production
