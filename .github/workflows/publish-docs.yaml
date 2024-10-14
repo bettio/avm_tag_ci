@@ -96,12 +96,12 @@ jobs:
         with:
           repository: atomvm/atomvm_www
           ref: Production
-          path: /home/runner/work/AtomVM/AtomVM/www
+          path: /home/runner/work/avm_tag_ci/avm_tag_ci/www
 
       - name: Track all branches
         shell: bash
         run: |
-          git config --global --add safe.directory /__w/AtomVM/AtomVM
+          git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
           for branch in `git branch -a | grep "remotes/origin" | grep -v HEAD | grep -v "${{ github.ref_name }}" `; do
             git branch --track ${branch#remotes/origin/} $branch
           done
@@ -118,8 +118,7 @@ jobs:
 
       - name: Commit files
         id: commit_files
-        if: github.repository == 'atomvm/AtomVM'
-        working-directory: /home/runner/work/AtomVM/AtomVM/www
+        working-directory: /home/runner/work/avm_tag_ci/avm_tag_ci/www
         run: |
           git checkout Production
           git config --local user.email "atomvm-doc-bot@users.noreply.github.com"
@@ -128,8 +127,7 @@ jobs:
           git add .
           git diff --exit-code || git commit -m "Update Documentation"
       - name: Push changes
-        if: github.repository == 'atomvm/AtomVM'
-        working-directory: /home/runner/work/AtomVM/AtomVM/www
+        working-directory: /home/runner/work/avm_tag_ci/avm_tag_ci/www
         run: |
           export GIT_SSH_COMMAND="ssh -vvv"
           eval `ssh-agent -t 60 -s`
