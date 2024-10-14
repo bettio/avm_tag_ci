@@ -129,7 +129,7 @@ jobs:
         working-directory: /home/runner/work/AtomVM/AtomVM/www
         run: |
           eval `ssh-agent -t 60 -s`
-          echo "${{ secrets.PUBLISH_ACTION_KEY }}" | ssh-add -
+          #echo "${{ secrets.PUBLISH_ACTION_KEY }}" | ssh-add -
           mkdir -p ~/.ssh/
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git remote add push_dest "git@github.com:atomvm/atomvm_www.git"
