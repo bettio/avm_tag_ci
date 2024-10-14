@@ -116,8 +116,8 @@ jobs:
           cmake ..
           cd doc
           make GitHub_CI_Publish_Docs
-          rm -frv "/home/runner/work/avm_tag_ci/avm_tag_ci/www/doc/${{ github.ref_name }}"
-          cp -av html "/home/runner/work/avm_tag_ci/avm_tag_ci/www/doc/${{ github.ref_name }}"
+          rm -frv "/__w/avm_tag_ci/avm_tag_ci/www/doc/${{ github.ref_name }}"
+          cp -av html "/__w/avm_tag_ci/avm_tag_ci/www/doc/${{ github.ref_name }}"
 
       - name: Commit files
         id: commit_files
