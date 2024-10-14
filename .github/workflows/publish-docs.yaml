@@ -128,7 +128,7 @@ jobs:
       - name: Push changes
         working-directory: /home/runner/work/avm_tag_ci/avm_tag_ci/www
         run: |
-          export GIT_SSH_COMMAND="ssh -vvv"
+          export GIT_SSH_COMMAND="ssh -vvv -o StrictHostKeyChecking=no"
           eval `ssh-agent -t 60 -s`
           echo "${{ secrets.PUBLISH_ACTION_KEY }}" | ssh-add -
           mkdir -p ~/.ssh/
