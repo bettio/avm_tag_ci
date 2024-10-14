@@ -131,6 +131,7 @@ jobs:
         if: github.repository == 'atomvm/AtomVM'
         working-directory: /home/runner/work/AtomVM/AtomVM/www
         run: |
+          export GIT_SSH_COMMAND="ssh -vvv"
           eval `ssh-agent -t 60 -s`
           echo "${{ secrets.PUBLISH_ACTION_KEY }}" | ssh-add -
           mkdir -p ~/.ssh/
