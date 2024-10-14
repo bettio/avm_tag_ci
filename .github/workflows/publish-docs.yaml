@@ -124,13 +124,10 @@ jobs:
           git checkout Production
           git config --local user.email "atomvm-doc-bot@users.noreply.github.com"
           git config --local user.name "AtomVM Doc Bot"
-          if [ -n "$(git status --porcelain=v1)" ]; then
-            git add .
-            git commit -m "Update Documentation"
-            echo "PUBLISH=true" >> "$GITHUB_OUTPUT"
-          fi
+          git add .
+          git commit -m "Update Documentation"
       - name: Push changes
-        if: github.repository == 'atomvm/AtomVM' && steps.commit_files.outputs.PUBLISH  == 'true'
+        if: github.repository == 'atomvm/AtomVM'
         working-directory: /home/runner/work/AtomVM/AtomVM/www
         run: |
           eval `ssh-agent -t 60 -s`
