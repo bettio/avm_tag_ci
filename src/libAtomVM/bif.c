@@ -767,66 +767,56 @@ term bif_erlang_mul_2(Context *ctx, uint32_t fail_label, int live, term arg1, te
 
 static term div_boxed_helper(Context *ctx, uint32_t fail_label, uint32_t live, term arg1, term arg2)
 {
-    int size = 0;
-    if (term_is_boxed_integer(arg1)) {
-        size = term_boxed_size(arg1);
-    } else if (UNLIKELY(!term_is_integer(arg1))) {
-        TRACE("error: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
-        RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
-    }
-    if (term_is_boxed_integer(arg2)) {
-        size |= term_boxed_size(arg2);
-    } else if (UNLIKELY(!term_is_integer(arg2))) {
-        TRACE("error: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
-        RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
-    }
+    if (LIKELY(term_is_any_integer(arg1) && term_is_any_integer(arg2))) {
 
-    switch (size) {
-        case 0: {
-            //BUG
-            AVM_ABORT();
-        }
+        size_t arg1_size = term_is_integer(arg1) ? 0 : term_boxed_size(arg1);
+        size_t arg2_size = term_is_integer(arg2) ? 0 : term_boxed_size(arg2);
+        switch (MAX(arg1_size, arg2_size)) {
+            case 0:
+                UNREACHABLE();
+            case 1: {
+                avm_int_t val1 = term_maybe_unbox_int(arg1);
+                avm_int_t val2 = term_maybe_unbox_int(arg2);
 
-        case 1: {
-            avm_int_t val1 = term_maybe_unbox_int(arg1);
-            avm_int_t val2 = term_maybe_unbox_int(arg2);
-            if (UNLIKELY(val2 == 0)) {
-                RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
+                if (UNLIKELY(val2 == 0)) {
+                    RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
 
-            } else if (UNLIKELY((val2 == -1) && (val1 == AVM_INT_MIN))) {
-                #if BOXED_TERMS_REQUIRED_FOR_INT64 == 2
-                    return make_boxed_int64(ctx, fail_label, live, -((avm_int64_t) AVM_INT_MIN));
+                } else if (UNLIKELY((val2 == -1) && (val1 == AVM_INT_MIN))) {
+                    #if BOXED_TERMS_REQUIRED_FOR_INT64 == 2
+                        return make_boxed_int64(ctx, fail_label, live, -((avm_int64_t) AVM_INT_MIN));
 
-                #elif BOXED_TERMS_REQUIRED_FOR_INT64 == 1
-                    TRACE("overflow: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
-                    RAISE_ERROR_BIF(fail_label, OVERFLOW_ATOM);
-                #endif
+                    #elif BOXED_TERMS_REQUIRED_FOR_INT64 == 1
+                        TRACE("overflow: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
+                        RAISE_ERROR_BIF(fail_label, OVERFLOW_ATOM);
+                    #endif
+                }
 
-            } else {
                 return make_maybe_boxed_int(ctx, fail_label, live, val1 / val2);
             }
-        }
 
         #if BOXED_TERMS_REQUIRED_FOR_INT64 == 2
-        case 2:
-        case 3: {
-            avm_int64_t val1 = term_maybe_unbox_int64(arg1);
-            avm_int64_t val2 = term_maybe_unbox_int64(arg2);
-            if (UNLIKELY(val2 == 0)) {
-                RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
+            case 2: {
+                avm_int64_t val1 = term_maybe_unbox_int64(arg1);
+                avm_int64_t val2 = term_maybe_unbox_int64(arg2);
 
-            } else if (UNLIKELY((val2 == -1) && (val1 == INT64_MIN))) {
-                TRACE("overflow: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
-                RAISE_ERROR_BIF(fail_label, OVERFLOW_ATOM);
+                if (UNLIKELY(val2 == 0)) {
+                    RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
 
-            } else {
+                } else if (UNLIKELY((val2 == -1) && (val1 == INT64_MIN))) {
+                    TRACE("overflow: arg1: 0x%lx, arg2: 0x%lx\n", arg1, arg2);
+                    RAISE_ERROR_BIF(fail_label, OVERFLOW_ATOM);
+
+                }
+
                 return make_maybe_boxed_int64(ctx, fail_label, live, val1 / val2);
             }
-        }
         #endif
 
-        default:
-            RAISE_ERROR_BIF(fail_label, OVERFLOW_ATOM);
+            default:
+                UNREACHABLE();
+        }
+    } else {
+        RAISE_ERROR_BIF(fail_label, BADARITH_ATOM);
     }
 }
 
