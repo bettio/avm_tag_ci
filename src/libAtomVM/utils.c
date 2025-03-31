@@ -212,7 +212,7 @@ static inline int64_t int64_safe_neg_unsigned(uint64_t u64)
     return (-((int64_t) (u64 - 1)) - 1);
 }
 
-static inline int64_t uint64_t_overflows_int64(uint64_t val, bool is_negative)
+static inline int64_t uint64_does_overflow_int64(uint64_t val, bool is_negative)
 {
     return ((is_negative && (val > ((uint64_t) INT64_MAX) + 1))
         || (!is_negative && (val > ((uint64_t) INT64_MAX))));
@@ -261,7 +261,7 @@ static int buf10_to_int64(
     if (UNLIKELY(pos <= 0)) {
         return pos;
     }
-    if (uint64_t_overflows_int64(utmp, is_negative)) {
+    if (uint64_does_overflow_int64(utmp, is_negative)) {
         utmp /= 10;
         pos--;
     }
@@ -365,7 +365,7 @@ static int buf16_to_int64(
     if (UNLIKELY(pos <= 0)) {
         return pos;
     }
-    if (uint64_t_overflows_int64(utmp, is_negative)) {
+    if (uint64_does_overflow_int64(utmp, is_negative)) {
         utmp >>= 16;
         pos--;
     }
@@ -392,7 +392,7 @@ static int buf16_to_int64(
     int high_parsed_count = new_pos - pos;
     pos = new_pos;
     uint64_t combined = (uhigh << (high_parsed_count * 4)) + ulow;
-    if (uint64_t_overflows_int64(combined, is_negative)) {
+    if (uint64_does_overflow_int64(combined, is_negative)) {
         combined >>= 16;
         pos--;
     }
