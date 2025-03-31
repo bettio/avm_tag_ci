@@ -269,6 +269,10 @@ static int buf10_to_int64(
     return pos;
 
 #elif INTPTR_MAX == INT32_MAX
+    // here we try to minimize the number of 64-bit multiplications on 32-bit CPUs
+    // we parse the number in 2 chunks, using 32-bit ints as much as possible,
+    // and then everything is combined.
+    // When a number has <= 10 digits, the short path is used.
     uint64_t uhigh = 0;
     int pos = buf10_to_smallu64(buf, buf_len, first_digit_index, &uhigh);
     if (pos == (int) buf_len) {
@@ -298,6 +302,9 @@ static int buf10_to_int64(
 
     static const uint64_t pows10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000,
         100000000, 1000000000, 10000000000 };
+
+    _Static_assert((sizeof(pows10) / sizeof(uint64_t)) - 1 == INTPTR_MAX_BASE_10_DIGITS, "Only 10 digits are supported");
+    ASSUME(high_parsed_count <= INTPTR_MAX_BASE_10_DIGITS);
 
     bool overflowed;
     int64_t maybe_overflowed_add;
