@@ -297,7 +297,7 @@ static int buf10_to_int64(
 
     uintptr_t ulow = 0;
     int new_pos = buf10_to_uintptr(buf, buf_len, pos, &ulow);
-    if (UNLIKELY(pos <= 0)) {
+    if (UNLIKELY(new_pos <= 0)) {
         return pos;
     }
     int high_parsed_count = new_pos - pos;
@@ -383,7 +383,7 @@ static int buf16_to_int64(
 
     uintptr_t ulow = 0;
     int new_pos = buf10_to_uintptr(buf, buf_len, pos, &ulow);
-    if (UNLIKELY(pos <= 0)) {
+    if (UNLIKELY(new_pos <= 0)) {
         return pos;
     }
     int high_parsed_count = new_pos - pos;
