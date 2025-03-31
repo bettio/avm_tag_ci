@@ -303,14 +303,16 @@ static int buf10_to_int64(
     static const uint64_t pows10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000,
         100000000, 1000000000, 10000000000 };
 
-    _Static_assert((sizeof(pows10) / sizeof(uint64_t)) - 1 == INTPTR_MAX_BASE_10_DIGITS, "Only 10 digits are supported");
+    _Static_assert((sizeof(pows10) / sizeof(uint64_t)) - 1 == INTPTR_MAX_BASE_10_DIGITS,
+        "Only 10 digits are supported");
     ASSUME(high_parsed_count <= INTPTR_MAX_BASE_10_DIGITS);
 
     bool overflowed;
     int64_t maybe_overflowed_add;
     do {
         int64_t maybe_overflowed_mul;
-        overflowed = __builtin_mul_overflow(shigh, pows10[high_parsed_count], &maybe_overflowed_mul);
+        overflowed
+            = __builtin_mul_overflow(shigh, pows10[high_parsed_count], &maybe_overflowed_mul);
         if (!overflowed) {
             overflowed = __builtin_add_overflow(maybe_overflowed_mul, slow, &maybe_overflowed_add);
         }
