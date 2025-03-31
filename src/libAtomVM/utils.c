@@ -223,8 +223,8 @@ static inline bool is_base_10_digit(char c)
     return (c >= '0') && (c <= '9');
 }
 
-static int buf10_to_uintptr(
-    const char buf[], size_t buf_len, size_t first_digit_index, uintptr_t *out)
+static int buf10_to_smallu64(
+    const char buf[], size_t buf_len, size_t first_digit_index, uint64_t *out)
 {
     size_t i = first_digit_index;
 
@@ -248,21 +248,7 @@ static int buf10_to_uintptr(
     }
     uintptr_t last_digit_num = (last_digit_char - '0');
 
-    // extra digits
-    uintptr_t maybe_overflowed_mul;
-    if (__builtin_mul_overflow(acc, 10, &maybe_overflowed_mul)) {
-        *out = acc;
-        return i;
-    }
-
-    uintptr_t maybe_overflowed_add;
-    if (__builtin_add_overflow(maybe_overflowed_mul, last_digit_num, &maybe_overflowed_add)) {
-        *out = acc;
-        return i;
-    }
-    acc = maybe_overflowed_add;
-
-    *out = acc;
+    *out = (((uint64_t) acc) * 10) + last_digit_num;
     return i + 1;
 }
 
@@ -270,9 +256,8 @@ static int buf10_to_int64(
     const char buf[], size_t buf_len, size_t first_digit_index, bool is_negative, int64_t *out)
 {
 #if INTPTR_MAX == INT64_MAX
-    _Static_assert(sizeof(uintptr_t) == sizeof(int64_t), "Unsupported intptr size or definition");
-    uintptr_t utmp;
-    int pos = buf10_to_uintptr(buf, buf_len, first_digit_index, &utmp);
+    uint64_t utmp;
+    int pos = buf10_to_smallu64(buf, buf_len, first_digit_index, &utmp);
     if (UNLIKELY(pos <= 0)) {
         return pos;
     }
@@ -284,10 +269,8 @@ static int buf10_to_int64(
     return pos;
 
 #elif INTPTR_MAX == INT32_MAX
-    _Static_assert(sizeof(uintptr_t) == sizeof(uint32_t), "Unsupported uintptr size or definition");
-
-    uintptr_t uhigh = 0;
-    int pos = buf10_to_uintptr(buf, buf_len, first_digit_index, &uhigh);
+    uint64_t uhigh = 0;
+    int pos = buf10_to_smallu64(buf, buf_len, first_digit_index, &uhigh);
     if (pos == (int) buf_len) {
         *out = is_negative ? -((int64_t) uhigh) : ((int64_t) uhigh);
         return pos;
@@ -295,22 +278,42 @@ static int buf10_to_int64(
         return pos;
     }
 
-    uintptr_t ulow = 0;
-    int new_pos = buf10_to_uintptr(buf, buf_len, pos, &ulow);
+    uint64_t ulow = 0;
+    int new_pos = buf10_to_smallu64(buf, buf_len, pos, &ulow);
     if (UNLIKELY(new_pos <= 0)) {
         return pos;
     }
     int high_parsed_count = new_pos - pos;
     pos = new_pos;
+
+    int64_t shigh;
+    int64_t slow;
+    if (is_negative) {
+        shigh = -((int64_t) uhigh);
+        slow = -((int64_t) ulow);
+    } else {
+        shigh = (int64_t) uhigh;
+        slow = (int64_t) ulow;
+    }
+
     static const uint64_t pows10[] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000,
         100000000, 1000000000, 10000000000 };
-    uint64_t combined = uhigh * pows10[high_parsed_count] + ulow;
-    if (uint64_t_overflows_int64(combined, is_negative)) {
-        combined /= 10;
-        pos--;
-    }
-    // this trick is useful to avoid any intermediate undefined/overflow
-    *out = is_negative ? int64_safe_neg_unsigned(combined) : (int64_t) combined;
+
+    bool overflowed;
+    int64_t maybe_overflowed_add;
+    do {
+        int64_t maybe_overflowed_mul;
+        overflowed = __builtin_mul_overflow(shigh, pows10[high_parsed_count], &maybe_overflowed_mul);
+        if (!overflowed) {
+            overflowed = __builtin_add_overflow(maybe_overflowed_mul, slow, &maybe_overflowed_add);
+        }
+        if (overflowed) {
+            slow /= 10;
+            high_parsed_count--;
+        }
+    } while (overflowed);
+
+    *out = maybe_overflowed_add;
 
     return pos;
 #else
