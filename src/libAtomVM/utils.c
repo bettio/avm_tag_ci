@@ -382,7 +382,7 @@ static int buf16_to_int64(
     }
 
     uintptr_t ulow = 0;
-    int new_pos = buf10_to_uintptr(buf, buf_len, pos, &ulow);
+    int new_pos = buf16_to_uintptr(buf, buf_len, pos, &ulow);
     if (UNLIKELY(new_pos <= 0)) {
         return pos;
     }
