@@ -114,6 +114,7 @@ compile_erlang(negatives2)
 compile_erlang(datetime)
 compile_erlang(test_system_time)
 compile_erlang(is_type)
+compile_erlang(is_record)
 compile_erlang(test_bitshift)
 compile_erlang(test_bitwise)
 compile_erlang(test_bitwise2)
@@ -523,6 +524,8 @@ compile_erlang(test_raw_raise)
 
 compile_erlang(test_ets)
 
+compile_erlang(bigint)
+
 add_custom_target(erlang_test_modules DEPENDS
     code_load_files
 
@@ -914,6 +917,7 @@ add_custom_target(erlang_test_modules DEPENDS
 
     is_fun_2_with_frozen.beam
     is_fun_2_with_frozen2.beam
+    is_record.beam
 
     function_reference_decode.beam
     makefunref.beam
@@ -1010,4 +1014,5 @@ add_custom_target(erlang_test_modules DEPENDS
     test_raw_raise.beam
 
     test_ets.beam
+    bigint.beam
 )

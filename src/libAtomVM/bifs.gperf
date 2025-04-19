@@ -39,6 +39,7 @@ erlang:self/0, {.bif.base.type = BIFFunctionType, .bif.bif0_ptr = bif_erlang_sel
 erlang:length/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_length_1}
 erlang:byte_size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_byte_size_1}
 erlang:bit_size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_bit_size_1}
+erlang:binary_part/3, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif3_ptr = bif_erlang_binary_part_3}
 erlang:get/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_get_1}
 erlang:is_atom/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_atom_1}
 erlang:is_bitstring/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_binary_1}
@@ -53,6 +54,7 @@ erlang:is_number/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlan
 erlang:is_pid/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_pid_1}
 erlang:is_reference/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_reference_1}
 erlang:is_tuple/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_tuple_1}
+erlang:is_record/2,{.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_is_record_2}
 erlang:is_map/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_map_1}
 erlang:is_map_key/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_is_map_key_2}
 erlang:not/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_not_1}

@@ -321,7 +321,7 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(test_atom_to_binary, 1),
     TEST_CASE(test_unicode),
 
-    TEST_CASE_EXPECTED(test_binary_part, 12),
+    TEST_CASE(test_binary_part),
     TEST_CASE(test_binary_split),
 
     TEST_CASE_COND(plusone, 134217728, LONG_MAX != 9223372036854775807),
@@ -440,6 +440,7 @@ struct Test tests[] = {
     TEST_CASE_EXPECTED(boxed_is_not_float, 16),
     TEST_CASE_EXPECTED(float_is_float, 32),
     TEST_CASE_EXPECTED(float_is_number, 32),
+    TEST_CASE(is_record),
     TEST_CASE(fconv_fail_invalid),
 
     TEST_CASE_EXPECTED(float2bin, 31),
@@ -580,6 +581,8 @@ struct Test tests[] = {
     TEST_CASE(test_raw_raise),
 
     TEST_CASE(test_ets),
+
+    TEST_CASE(bigint),
 
     // TEST CRASHES HERE: TEST_CASE(memlimit),
 

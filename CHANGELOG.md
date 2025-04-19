@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for `float/1` BIF.
 - Added `erlang:get/0` and `erlang:erase/0`.
 - Added `erlang:unique_integer/0` and `erlang:unique_integer/1`
+- Added support for 'ets:delete/1'.
+
+### Changed
+- `binary_to_integer/1` doesn't accept anymore binaries such as `"0xFF"` or `"  123"`
 
 ### Fixed
 - ESP32: improved sntp sync speed from a cold boot.
@@ -44,6 +48,7 @@ with nodejs and emscripten)
 - Added documentation and function specs for uart driver
 - Added `uart:read/2` with a timeout parameter.
 - Missing `erlang:is_function/2` BIF
+- Added `erlang:is_record/2`
 
 ### Fixed
 
@@ -93,6 +98,7 @@ memory error
 - Fix `is_function/2` guard
 - Fixed segfault when calling `lists:reverse/1` (#1600)
 - Fixed nif_atomvm_posix_read GC bug
+- Fixed `erlang:is_number/1` function, now returns true also for floats
 
 ### Changed
 

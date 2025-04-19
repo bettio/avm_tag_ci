@@ -84,6 +84,7 @@ extern "C" {
 #define FUNCTION_REFERENCE_SIZE 4
 #define BOXED_INT_SIZE (BOXED_TERMS_REQUIRED_FOR_INT + 1)
 #define BOXED_INT64_SIZE (BOXED_TERMS_REQUIRED_FOR_INT64 + 1)
+#define BOXED_INTN_SIZE(term_size) ((term_size) + 1)
 #define BOXED_FUN_SIZE 3
 #define FLOAT_SIZE (sizeof(float_term_t) / sizeof(term) + 1)
 #define REF_SIZE ((int) ((sizeof(uint64_t) / sizeof(term)) + 1))
@@ -135,6 +136,12 @@ struct PrinterFun
 {
     printer_function_t print;
 };
+
+typedef struct BinaryPosLen
+{
+    avm_int_t pos;
+    avm_int_t len;
+} BinaryPosLen;
 
 enum RefcBinaryFlags
 {
@@ -870,6 +877,26 @@ static inline size_t term_boxed_integer_size(avm_int64_t value)
     }
 }
 
+static inline term term_create_uninitialized_intn(size_t n, Heap *heap)
+{
+    term *boxed_int = memory_heap_alloc(heap, 1 + n);
+    boxed_int[0] = (n << 6) | TERM_BOXED_POSITIVE_INTEGER; // OR sign bit
+
+    return ((term) boxed_int) | TERM_BOXED_VALUE_TAG;
+}
+
+static inline void *term_intn_data(term t)
+{
+    const term *boxed_value = term_to_const_term_ptr(t);
+    return (void *) (boxed_value + 1);
+}
+
+static inline size_t term_intn_size(term t)
+{
+    const term *boxed_value = term_to_const_term_ptr(t);
+    return term_get_size_from_boxed_header(boxed_value[0]);
+}
+
 static inline term term_from_catch_label(unsigned int module_index, unsigned int label)
 {
     return (term) ((module_index << 24) | (label << 6) | TERM_CATCH_TAG);
@@ -1104,6 +1131,33 @@ static inline term term_create_empty_binary(size_t size, Heap *heap, GlobalConte
     term t = term_create_uninitialized_binary(size, heap, glb);
     memset((char *) term_binary_data(t), 0x00, size);
     return t;
+}
+
+static inline bool term_normalize_binary_pos_len(term binary, avm_int_t pos, avm_int_t len, BinaryPosLen *pos_len)
+{
+    avm_int_t size = (avm_int_t) term_binary_size(binary);
+    if (len < 0) {
+        pos += len;
+        len = -len;
+    }
+
+    if (UNLIKELY((pos < 0) || (pos > size) || (pos + len > size))) {
+        return false;
+    }
+
+    pos_len->pos = pos;
+    pos_len->len = len;
+    return true;
+}
+
+static inline bool term_is_invalid_binary_pos_len(BinaryPosLen pos_len)
+{
+    return pos_len.pos == -1 && pos_len.len == -1;
+}
+
+static inline BinaryPosLen term_invalid_binary_pos_len(void)
+{
+    return (BinaryPosLen) { .pos = -1, .len = -1 };
 }
 
 /**
