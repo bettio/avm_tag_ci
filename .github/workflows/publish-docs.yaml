@@ -101,7 +101,7 @@ jobs:
       - name: Track all branches
         shell: bash
         run: |
-          git config --global --add safe.directory /__w/AtomVM/AtomVM
+          git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
           for branch in `git branch -a | grep "remotes/origin" | grep -v HEAD | grep -v "${{ github.ref_name }}" `; do
             git branch --track ${branch#remotes/origin/} $branch
           done
