@@ -96,7 +96,7 @@ jobs:
         with:
           repository: atomvm/doc.atomvm.org
           ref: main
-          path: /home/runner/work/AtomVM/AtomVM/www
+          path: /home/runner/work/avm_tag_ci/avm_tag_ci/www
 
       - name: Track all branches
         shell: bash
@@ -115,12 +115,12 @@ jobs:
           cmake ..
           cd doc
           make GitHub_CI_Publish_Docs
-          rm -frv "/__w/AtomVM/AtomVM/www/${{ github.ref_name }}"
-          cp -av html "/__w/AtomVM/AtomVM/www/${{ github.ref_name }}"
+          rm -frv "/__w/avm_tag_ci/avm_tag_ci/www/${{ github.ref_name }}"
+          cp -av html "/__w/avm_tag_ci/avm_tag_ci/www/${{ github.ref_name }}"
       - name: Commit files
         id: commit_files
         if: github.repository == 'atomvm/AtomVM'
-        working-directory: /home/runner/work/AtomVM/AtomVM/www
+        working-directory: /home/runner/work/avm_tag_ci/avm_tag_ci/www
         run: |
           git config --local user.email "atomvm-doc-bot@users.noreply.github.com"
           git config --local user.name "AtomVM Doc Bot"
@@ -132,7 +132,7 @@ jobs:
           git log -1
       - name: Push changes
         if: github.repository == 'atomvm/AtomVM'
-        working-directory: /home/runner/work/AtomVM/AtomVM/www
+        working-directory: /home/runner/work/avm_tag_ci/avm_tag_ci/www
         run: |
           export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
           eval `ssh-agent -t 60 -s`
