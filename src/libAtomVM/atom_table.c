@@ -50,8 +50,11 @@ struct HNode
 {
     struct HNode *next;
     AtomString key;
-    long index;
+    uint32_t index : 20;
+    uint32_t len : 10;
 };
+
+_Static_assert(((sizeof(long) == 8) && sizeof(struct HNode) == 24) || ((sizeof(long) == 4) && sizeof(struct HNode) == 12), "Unexpected struct HNode size.");
 
 struct HNodeGroup
 {
