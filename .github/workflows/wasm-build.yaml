@@ -55,7 +55,7 @@ jobs:
       run: apt update && apt install -y gperf zlib1g-dev cmake ninja-build
 
     - name: "Git config safe.directory for codeql"
-      run: git config --global --add safe.directory /__w/AtomVM/AtomVM
+      run: git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
 
     - name: "Initialize CodeQL"
       uses: github/codeql-action/init@v3

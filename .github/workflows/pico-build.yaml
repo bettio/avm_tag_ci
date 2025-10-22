@@ -58,7 +58,7 @@ jobs:
             erlang-base erlang-dev erlang-dialyzer erlang-eunit rebar3
 
     - name: "Git config safe.directory for codeql"
-      run: git config --global --add safe.directory /__w/AtomVM/AtomVM
+      run: git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
 
     - name: "Initialize CodeQL"
       uses: github/codeql-action/init@v3

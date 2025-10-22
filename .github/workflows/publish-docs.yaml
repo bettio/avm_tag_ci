@@ -102,7 +102,7 @@ jobs:
       - name: Track all branches
         shell: bash
         run: |
-          git config --global --add safe.directory /__w/AtomVM/AtomVM
+          git config --global --add safe.directory /__w/avm_tag_ci/avm_tag_ci
           for branch in `git branch -a | grep "remotes/origin" | grep -v HEAD | grep -v "${{ github.ref_name }}" `; do
             git branch --track ${branch#remotes/origin/} $branch
           done
@@ -116,8 +116,8 @@ jobs:
           cmake ..
           cd doc
           make GitHub_CI_Publish_Docs
-          rm -frv "/__w/AtomVM/AtomVM/www/${{ github.ref_name }}"
-          cp -av html "/__w/AtomVM/AtomVM/www/${{ github.ref_name }}"
+          rm -frv "/__w/avm_tag_ci/avm_tag_ci/www/${{ github.ref_name }}"
+          cp -av html "/__w/avm_tag_ci/avm_tag_ci/www/${{ github.ref_name }}"
       - name: Commit files
         id: commit_files
         if: github.repository == 'atomvm/AtomVM'
